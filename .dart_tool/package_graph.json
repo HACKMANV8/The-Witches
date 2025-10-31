@@ -7,6 +7,7 @@
       "name": "metropulse",
       "version": "1.0.0+1",
       "dependencies": [
+        "confetti",
         "cupertino_icons",
         "flutter",
         "flutter_riverpod",
@@ -55,6 +56,14 @@
         "stack_trace",
         "stream_channel",
         "test_api",
+        "vector_math"
+      ]
+    },
+    {
+      "name": "confetti",
+      "version": "0.7.0",
+      "dependencies": [
+        "flutter",
         "vector_math"
       ]
     },
@@ -439,6 +448,17 @@
       ]
     },
     {
+      "name": "leak_tracker",
+      "version": "11.0.2",
+      "dependencies": [
+        "clock",
+        "collection",
+        "meta",
+        "path",
+        "vm_service"
+      ]
+    },
+    {
       "name": "term_glyph",
       "version": "1.2.2",
       "dependencies": []
@@ -727,6 +747,38 @@
       ]
     },
     {
+      "name": "test",
+      "version": "1.26.2",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "boolean_selector",
+        "collection",
+        "coverage",
+        "http_multi_server",
+        "io",
+        "js",
+        "matcher",
+        "node_preamble",
+        "package_config",
+        "path",
+        "pool",
+        "shelf",
+        "shelf_packages_handler",
+        "shelf_static",
+        "shelf_web_socket",
+        "source_span",
+        "stack_trace",
+        "stream_channel",
+        "test_api",
+        "test_core",
+        "typed_data",
+        "web_socket_channel",
+        "webkit_inspection_protocol",
+        "yaml"
+      ]
+    },
+    {
       "name": "petitparser",
       "version": "7.0.1",
       "dependencies": [
@@ -742,6 +794,11 @@
         "meta",
         "path"
       ]
+    },
+    {
+      "name": "vm_service",
+      "version": "15.0.0",
+      "dependencies": []
     },
     {
       "name": "ffi",
@@ -819,58 +876,10 @@
       ]
     },
     {
-      "name": "web_socket",
-      "version": "1.0.1",
+      "name": "webkit_inspection_protocol",
+      "version": "1.2.1",
       "dependencies": [
-        "web"
-      ]
-    },
-    {
-      "name": "leak_tracker",
-      "version": "11.0.2",
-      "dependencies": [
-        "clock",
-        "collection",
-        "meta",
-        "path",
-        "vm_service"
-      ]
-    },
-    {
-      "name": "vm_service",
-      "version": "15.0.0",
-      "dependencies": []
-    },
-    {
-      "name": "test",
-      "version": "1.26.2",
-      "dependencies": [
-        "analyzer",
-        "async",
-        "boolean_selector",
-        "collection",
-        "coverage",
-        "http_multi_server",
-        "io",
-        "js",
-        "matcher",
-        "node_preamble",
-        "package_config",
-        "path",
-        "pool",
-        "shelf",
-        "shelf_packages_handler",
-        "shelf_static",
-        "shelf_web_socket",
-        "source_span",
-        "stack_trace",
-        "stream_channel",
-        "test_api",
-        "test_core",
-        "typed_data",
-        "web_socket_channel",
-        "webkit_inspection_protocol",
-        "yaml"
+        "logging"
       ]
     },
     {
@@ -898,31 +907,6 @@
         "test_api",
         "vm_service",
         "yaml"
-      ]
-    },
-    {
-      "name": "analyzer",
-      "version": "7.7.1",
-      "dependencies": [
-        "_fe_analyzer_shared",
-        "collection",
-        "convert",
-        "crypto",
-        "glob",
-        "meta",
-        "package_config",
-        "path",
-        "pub_semver",
-        "source_span",
-        "watcher",
-        "yaml"
-      ]
-    },
-    {
-      "name": "webkit_inspection_protocol",
-      "version": "1.2.1",
-      "dependencies": [
-        "logging"
       ]
     },
     {
@@ -1025,6 +1009,31 @@
       ]
     },
     {
+      "name": "analyzer",
+      "version": "7.7.1",
+      "dependencies": [
+        "_fe_analyzer_shared",
+        "collection",
+        "convert",
+        "crypto",
+        "glob",
+        "meta",
+        "package_config",
+        "path",
+        "pub_semver",
+        "source_span",
+        "watcher",
+        "yaml"
+      ]
+    },
+    {
+      "name": "web_socket",
+      "version": "1.0.1",
+      "dependencies": [
+        "web"
+      ]
+    },
+    {
       "name": "source_maps",
       "version": "0.10.13",
       "dependencies": [
@@ -1060,6 +1069,21 @@
       ]
     },
     {
+      "name": "convert",
+      "version": "3.1.2",
+      "dependencies": [
+        "typed_data"
+      ]
+    },
+    {
+      "name": "cli_config",
+      "version": "0.2.0",
+      "dependencies": [
+        "args",
+        "yaml"
+      ]
+    },
+    {
       "name": "watcher",
       "version": "1.1.4",
       "dependencies": [
@@ -1075,25 +1099,10 @@
       ]
     },
     {
-      "name": "convert",
-      "version": "3.1.2",
-      "dependencies": [
-        "typed_data"
-      ]
-    },
-    {
       "name": "_fe_analyzer_shared",
       "version": "85.0.0",
       "dependencies": [
         "meta"
-      ]
-    },
-    {
-      "name": "cli_config",
-      "version": "0.2.0",
-      "dependencies": [
-        "args",
-        "yaml"
       ]
     }
   ],

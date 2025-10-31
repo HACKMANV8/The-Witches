@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:metropulse/theme.dart';
+import 'package:metropulse/widgets/report_crowd_button.dart';
 
 class MapPage extends StatelessWidget {
   const MapPage({super.key});
@@ -7,7 +8,10 @@ class MapPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Live Crowd Map')),
+      appBar: AppBar(
+        title: const Text('Live Crowd Map'),
+        actions: const [ReportCrowdButton()],
+      ),
       body: Stack(
         children: [
           // Placeholder map canvas

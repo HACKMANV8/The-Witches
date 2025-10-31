@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:metropulse/theme.dart';
 import 'package:metropulse/widgets/crowd_badge.dart';
 import 'package:metropulse/pages/shell/home_shell.dart';
+import 'package:metropulse/widgets/report_crowd_button.dart';
 
 class HomeDashboardPage extends StatelessWidget {
   const HomeDashboardPage({super.key});
@@ -32,7 +33,13 @@ class HomeDashboardPage extends StatelessWidget {
                       Text(dateText, style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
-                  const Text('🚇', style: TextStyle(fontSize: 36)),
+                  Row(
+                    children: const [
+                      ReportCrowdButton(),
+                      SizedBox(width: 6),
+                      Text('🚇', style: TextStyle(fontSize: 32)),
+                    ],
+                  ),
                 ],
               ),
             ),

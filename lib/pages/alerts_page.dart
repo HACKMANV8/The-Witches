@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:metropulse/widgets/report_crowd_button.dart';
 
 class AlertsPage extends StatelessWidget {
   const AlertsPage({super.key});
@@ -6,14 +7,17 @@ class AlertsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Alerts')),
+      appBar: AppBar(
+        title: const Text('Alerts'),
+        actions: const [ReportCrowdButton()],
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: 5,
         itemBuilder: (_, i) => Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8)],
           ),

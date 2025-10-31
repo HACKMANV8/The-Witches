@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metropulse/app_state.dart';
 import 'package:metropulse/auth/supabase_auth_manager.dart';
+import 'package:metropulse/pages/create_account_page.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -105,7 +106,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       ),
                     ),
                     TextButton(
-                      onPressed: isLoading ? null : () => setState(() => createAccount = !createAccount),
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              if (!createAccount) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const CreateAccountPage()),
+                                );
+                              } else {
+                                setState(() => createAccount = false);
+                              }
+                            },
                       child: Text(createAccount ? 'Have an account? Sign In' : 'Create an account'),
                     ),
                     const SizedBox(height: 4),
