@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metropulse/app_state.dart';
+import 'package:metropulse/auth/supabase_auth_manager.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -11,14 +12,49 @@ class AuthPage extends ConsumerStatefulWidget {
 
 class _AuthPageState extends ConsumerState<AuthPage> {
   bool createAccount = false;
+  bool isLoading = false;
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final authManager = SupabaseAuthManager();
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleAuth() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    final user = createAccount
+        ? await authManager.createAccountWithEmail(context, emailController.text.trim(), passwordController.text)
+        : await authManager.signInWithEmail(context, emailController.text.trim(), passwordController.text);
+
+    setState(() => isLoading = false);
+
+    if (user != null && mounted) {
+      ref.read(sessionProvider.notifier).signIn(user);
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _handleGuestSignIn() async {
+    setState(() => isLoading = true);
+    final user = await authManager.signInAnonymously(context);
+    setState(() => isLoading = false);
+
+    if (user != null && mounted) {
+      ref.read(sessionProvider.notifier).continueAsGuest(user);
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -44,35 +80,37 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   children: [
                     Text(createAccount ? 'Create Account' : 'Sign In', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
-                    TextField(controller: emailController, decoration: const InputDecoration(hintText: 'Email')),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(hintText: 'Email'),
+                      keyboardType: TextInputType.emailAddress,
+                      enabled: !isLoading,
+                    ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: passwordController,
                       decoration: const InputDecoration(hintText: 'Password'),
                       obscureText: true,
+                      enabled: !isLoading,
+                      onSubmitted: (_) => _handleAuth(),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Placeholder for auth via Supabase later
-                          ref.read(sessionProvider.notifier).signIn();
-                          Navigator.of(context).pop();
-                        },
-                        child: Text(createAccount ? 'Create Account' : 'Sign In'),
+                        onPressed: isLoading ? null : _handleAuth,
+                        child: isLoading
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text(createAccount ? 'Create Account' : 'Sign In'),
                       ),
                     ),
                     TextButton(
-                      onPressed: () => setState(() => createAccount = !createAccount),
+                      onPressed: isLoading ? null : () => setState(() => createAccount = !createAccount),
                       child: Text(createAccount ? 'Have an account? Sign In' : 'Create an account'),
                     ),
                     const SizedBox(height: 4),
                     OutlinedButton(
-                      onPressed: () {
-                        ref.read(sessionProvider.notifier).continueAsGuest();
-                        Navigator.of(context).pop();
-                      },
+                      onPressed: isLoading ? null : _handleGuestSignIn,
                       child: const Text('Continue as Guest'),
                     ),
                   ],

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metropulse/theme.dart';
 import 'package:metropulse/pages/splash_page.dart';
+import 'package:metropulse/supabase/supabase_config.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseConfig.initialize();
   runApp(const ProviderScope(child: MyApp()));
 }
 
