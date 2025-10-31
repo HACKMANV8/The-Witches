@@ -1,12 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:metropulse/widgets/crowd_badge.dart';
 import 'package:metropulse/theme.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
 
-class MapPage extends StatelessWidget {
+class MapPage extends ConsumerWidget {
   const MapPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stationsAsync = ref.watch(stationsProvider);
+    final liveCrowd = ref.watch(aggregatedCrowdByStationProvider);
+
+    final markers = stationsAsync.maybeWhen(
+      data: (stations) {
+        return stations.map((s) {
+          final level = liveCrowd[s.id];
+          final hue = switch (level) {
+            CrowdLevel.low => BitmapDescriptor.hueGreen,
+            CrowdLevel.moderate => BitmapDescriptor.hueYellow,
+            CrowdLevel.high => BitmapDescriptor.hueRed,
+            null => BitmapDescriptor.hueAzure,
+          };
+        
+          return Marker(
+            markerId: MarkerId(s.id),
+            position: LatLng(s.latitude, s.longitude),
+            infoWindow: InfoWindow(title: s.name, snippet: level?.label ?? 'No recent data'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+          );
+        }).toSet();
+      },
+      orElse: () => <Marker>{},
+    );
+
+    // Fallback camera to Bengaluru
+    const fallbackCenter = LatLng(12.9716, 77.5946);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Live Crowd Map'),
@@ -14,11 +46,9 @@ class MapPage extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Placeholder map canvas
-          Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: const Text('Map placeholder — connect Google Maps SDK later'),
+          _SafeGoogleMap(
+            initialCameraPosition: const CameraPosition(target: fallbackCenter, zoom: 11),
+            markers: markers,
           ),
           Positioned(
             left: 16,
@@ -45,6 +75,33 @@ class MapPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SafeGoogleMap extends StatelessWidget {
+  final CameraPosition initialCameraPosition;
+  final Set<Marker> markers;
+  const _SafeGoogleMap({required this.initialCameraPosition, required this.markers});
+
+  @override
+  Widget build(BuildContext context) {
+    try {
+      return GoogleMap(
+        myLocationButtonEnabled: false,
+        myLocationEnabled: false,
+        zoomControlsEnabled: false,
+        initialCameraPosition: initialCameraPosition,
+        markers: markers,
+      );
+    } catch (e) {
+      return Center(
+        child: Text(
+          'Map unavailable. Please check your Maps API key and internet connection.',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
   }
 }
 

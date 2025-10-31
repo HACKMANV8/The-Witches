@@ -1,0 +1,16 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store .atom/ .buildlog/ .history .svn/
+
+# Flutter/Dart packages
+.packages .pub-cache/ .pub/
+
+# Flutter/Dart build outputs
+build/
+.dart_tool/
+
+# IDE-specific files
+.idea/ .vscode/ *.iml *.ipr

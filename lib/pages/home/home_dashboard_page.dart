@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:metropulse/theme.dart';
 import 'package:metropulse/widgets/crowd_badge.dart';
 import 'package:metropulse/pages/shell/home_shell.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
+import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:metropulse/widgets/crowd_badge.dart' as badge;
 
-class HomeDashboardPage extends StatelessWidget {
+class HomeDashboardPage extends ConsumerWidget {
   const HomeDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
     final dateText = DateFormat('EEE, MMM d • h:mm a').format(now);
+    final stationsAsync = ref.watch(stationsProvider);
+    final crowdByStation = ref.watch(aggregatedCrowdByStationProvider);
 
     return SafeArea(
       child: CustomScrollView(
@@ -99,13 +104,25 @@ class HomeDashboardPage extends StatelessWidget {
                 children: [
                   Text('Live Crowd Nearby', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  ...[
-                    _StationRow(station: 'MG Road', lineColor: MPColors.purple, level: CrowdLevel.moderate),
-                    const SizedBox(height: 8),
-                    _StationRow(station: 'Trinity', lineColor: MPColors.purple, level: CrowdLevel.low),
-                    const SizedBox(height: 8),
-                    _StationRow(station: 'Halasuru', lineColor: MPColors.purple, level: CrowdLevel.high),
-                  ],
+                  stationsAsync.when(
+                    data: (stations) {
+                      // Pick first 3 stations and show their live level if available
+                      final items = stations.take(3).map((s) {
+                        final level = crowdByStation[s.id] ?? badge.CrowdLevel.moderate;
+                        return _StationRow(station: s.name, lineColor: MPColors.purple, level: level);
+                      }).toList();
+                      return Column(
+                        children: [
+                          for (int i = 0; i < items.length; i++) ...[
+                            items[i],
+                            if (i != items.length - 1) const SizedBox(height: 8),
+                          ]
+                        ],
+                      );
+                    },
+                    loading: () => const Text('Loading stations...'),
+                    error: (_, __) => const Text('Unable to load live crowd'),
+                  ),
                 ],
               ),
             ),

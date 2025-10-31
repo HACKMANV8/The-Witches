@@ -52,8 +52,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final user = await authManager.signInAnonymously(context);
     setState(() => isLoading = false);
 
-    if (user != null && mounted) {
-      ref.read(sessionProvider.notifier).continueAsGuest(user);
+    if (mounted) {
+      ref.read(sessionProvider.notifier).continueAsGuest();
       Navigator.of(context).pop();
     }
   }

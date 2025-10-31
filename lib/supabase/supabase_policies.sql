@@ -1,3 +1,48 @@
+-- Users table RLS
+alter table if exists public.users enable row level security;
+
+-- Allow authenticated users to select their own profile
+create policy if not exists users_select_own on public.users
+  for select
+  to authenticated
+  using (id = auth.uid());
+
+-- Allow authenticated users to insert their own profile on sign up
+create policy if not exists users_insert_self on public.users
+  for insert
+  to authenticated
+  with check (id = auth.uid());
+
+-- Allow authenticated users to update their own profile
+create policy if not exists users_update_own on public.users
+  for update
+  to authenticated
+  using (id = auth.uid())
+  with check (id = auth.uid());
+
+-- Optionally allow public read of minimal user fields (remove if you don't want this)
+create policy if not exists users_public_read on public.users
+  for select
+  to anon
+  using (true);
+
+-- Crowd reports RLS
+alter table if exists public.crowd_reports enable row level security;
+
+-- Allow anyone to read recent crowd reports (for live map and home)
+create policy if not exists crowd_reports_public_read on public.crowd_reports
+  for select
+  to anon
+  using (true);
+
+-- Allow authenticated users to insert crowd reports attributed to themselves
+create policy if not exists crowd_reports_insert_auth on public.crowd_reports
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+-- Prevent updates/deletes by default (omit policies)
+
 -- Row Level Security Policies for MetroPulse
 
 -- Enable RLS on all tables

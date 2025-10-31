@@ -42,8 +42,8 @@ class SessionController extends Notifier<SessionState> {
     final currentUser = SupabaseConfig.auth.currentUser;
     return SessionState(
       isFirstLaunch: true,
-      isAuthenticated: currentUser != null && !currentUser.isAnonymous,
-      isGuest: currentUser?.isAnonymous ?? false,
+      isAuthenticated: currentUser != null,
+      isGuest: false,
       authUser: currentUser,
     );
   }
@@ -88,12 +88,12 @@ class SessionController extends Notifier<SessionState> {
     );
   }
 
-  void continueAsGuest(User user) {
+  void continueAsGuest() {
     state = state.copyWith(
       isAuthenticated: false,
       isGuest: true,
       isFirstLaunch: false,
-      authUser: user,
+      authUser: null,
     );
   }
 

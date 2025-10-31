@@ -38,4 +38,30 @@ class CrowdReportService {
     );
     return data.map((json) => CrowdReportModel.fromJson(json)).toList();
   }
+
+  /// Stream recent crowd reports in realtime within a sliding time window.
+  static Stream<List<CrowdReportModel>> streamRecentReports({Duration window = const Duration(minutes: 15)}) {
+    return SupabaseService
+        .from('crowd_reports')
+        .stream(primaryKey: ['id'])
+        .map((rows) {
+          final cutoff = DateTime.now().subtract(window);
+          final parsed = rows.map((json) => CrowdReportModel.fromJson(json)).toList();
+          parsed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          return parsed.where((r) => r.timestamp.isAfter(cutoff)).toList();
+        });
+  }
+
+  /// Stream reports for a specific station (useful for detail views)
+  static Stream<List<CrowdReportModel>> streamStationReports(String stationId, {Duration window = const Duration(minutes: 15)}) {
+    return SupabaseService
+        .from('crowd_reports')
+        .stream(primaryKey: ['id'])
+        .map((rows) {
+          final cutoff = DateTime.now().subtract(window);
+          final parsed = rows.map((json) => CrowdReportModel.fromJson(json)).toList();
+          parsed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          return parsed.where((r) => r.stationId == stationId && r.timestamp.isAfter(cutoff)).toList();
+        });
+  }
 }

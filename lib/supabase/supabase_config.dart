@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 /// Generic Supabase configuration template
 /// Replace YOUR_SUPABASE_URL and YOUR_SUPABASE_ANON_KEY with your actual values
 class SupabaseConfig {
-  static const String supabaseUrl = 'https://ysrsotrtwrfsqfylrxqb.supabase.co';
-  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcnNvdHJ0d3Jmc3FmeWxyeHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MjUxNjYsImV4cCI6MjA3NzQwMTE2Nn0.BHQkrljg5rm4ZgOqRwXQWWxlDK52kCyav6xAQniveGg';
+  // Prefer reading from build-time dart-define; falls back to hard-coded only if not provided
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://ysrsotrtwrfsqfylrxqb.supabase.co');
+  static const String anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzcnNvdHJ0d3Jmc3FmeWxyeHFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4MjUxNjYsImV4cCI6MjA3NzQwMTE2Nn0.BHQkrljg5rm4ZgOqRwXQWWxlDK52kCyav6xAQniveGg');
 
   static Future<void> initialize() async {
     await Supabase.initialize(
