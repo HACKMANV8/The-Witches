@@ -15,6 +15,7 @@
         "google_maps_flutter",
         "intl",
         "supabase_flutter",
+        "uni_links",
         "url_launcher"
       ],
       "devDependencies": [
@@ -59,6 +60,15 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "uni_links",
+      "version": "0.5.1",
+      "dependencies": [
+        "flutter",
+        "uni_links_platform_interface",
+        "uni_links_web"
       ]
     },
     {
@@ -294,6 +304,23 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "uni_links_web",
+      "version": "0.1.0",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "uni_links_platform_interface"
+      ]
+    },
+    {
+      "name": "uni_links_platform_interface",
+      "version": "1.0.0",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface"
       ]
     },
     {

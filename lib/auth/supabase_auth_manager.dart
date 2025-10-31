@@ -41,6 +41,17 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
       }
       return null;
     } catch (e) {
+      // If the user already exists, attempt to sign in instead.
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('already') || msg.contains('user') && msg.contains('exists')) {
+        try {
+          final signin = await SupabaseConfig.auth.signInWithPassword(email: email, password: password);
+          if (signin.user != null) {
+            await _ensureUserRecord(signin.user!);
+            return signin.user;
+          }
+        } catch (_) {}
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign up failed: ${e.toString()}')),

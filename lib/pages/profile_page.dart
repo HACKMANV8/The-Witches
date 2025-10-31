@@ -4,6 +4,8 @@ import 'package:metropulse/app_state.dart';
 import 'package:metropulse/pages/auth_page.dart';
 import 'package:metropulse/services/crowd_report_service.dart';
 import 'package:metropulse/models/crowd_report_model.dart';
+import 'package:metropulse/supabase/supabase_config.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -56,6 +58,110 @@ class ProfilePage extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
+            // Connected providers section
+            FutureBuilder(
+              future: Future.value(SupabaseConfig.auth.currentUser),
+              builder: (context, snap) {
+                final user = snap.data;
+                final identities = (user == null) ? null : (user as dynamic).identities as List<dynamic>?;
+                final connected = <String>{};
+                if (identities != null) {
+                  for (final id in identities) {
+                    final provider = id['provider'] as String?;
+                    if (provider != null) connected.add(provider);
+                  }
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    const Text('Connected accounts', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(
+                        child: connected.contains('google')
+                            ? ElevatedButton(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                            title: const Text('Disconnect Google'),
+                                            content: const Text('Unlink Google from your account?'),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
+                                              TextButton(onPressed: () => Navigator.pop(_, true), child: const Text('Disconnect')),
+                                            ],
+                                          ));
+                                  if (confirm == true) {
+                                    // Best-effort unlink via RPC; may require server-side support.
+                                    try {
+                                      await SupabaseConfig.client.rpc('unlink_oauth_provider', params: {
+                                        'provider': 'google',
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google disconnected')));
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disconnect failed')));
+                                    }
+                                  }
+                                },
+                                child: const Text('Disconnect Google'),
+                              )
+                            : OutlinedButton(
+                                onPressed: () async {
+                                  // Start OAuth connect flow: use the existing Supabase client
+                                  // to open the authorize URL in the external browser via url_launcher
+                                  final callback = '${SupabaseConfig.supabaseUrl}/auth/v1/callback';
+                                  final url = '${SupabaseConfig.supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${Uri.encodeComponent(callback)}';
+                                  // Open external browser to start connect flow.
+                                  // ignore: unawaited_futures
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting Google connect...')));
+                                  await launchUrlString(url, mode: LaunchMode.externalApplication);
+                                  // Note: we import url_launcher earlier in codebase; open here if available.
+                                },
+                                child: const Text('Connect Google'),
+                              ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: connected.contains('github')
+                            ? ElevatedButton(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                            title: const Text('Disconnect GitHub'),
+                                            content: const Text('Unlink GitHub from your account?'),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
+                                              TextButton(onPressed: () => Navigator.pop(_, true), child: const Text('Disconnect')),
+                                            ],
+                                          ));
+                                  if (confirm == true) {
+                                    try {
+                                      await SupabaseConfig.client.rpc('unlink_oauth_provider', params: {
+                                        'provider': 'github',
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('GitHub disconnected')));
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disconnect failed')));
+                                    }
+                                  }
+                                },
+                                child: const Text('Disconnect GitHub'),
+                              )
+                            : OutlinedButton(
+                                onPressed: () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting GitHub connect...')));
+                                },
+                                child: const Text('Connect GitHub'),
+                              ),
+                      ),
+                    ]),
+                  ],
+                );
+              },
+            ),
           ] else if (session.isGuest) ...[
             const SizedBox(height: 8),
             const Center(child: Icon(Icons.person_outline, size: 40)),
