@@ -28,7 +28,8 @@ class RouteResultsPage extends ConsumerWidget {
           final fastest = [from, to];
 
           // Least crowded: try recommended station near origin
-          final recsAsync = ref.watch(recommendedStationsProvider(fromStationId));
+          final req = RecommendedStationsRequest(fromStationId: fromStationId, requestedAt: DateTime.now());
+          final recsAsync = ref.watch(recommendedStationsProvider(req));
 
           return recsAsync.when(
             data: (recs) {

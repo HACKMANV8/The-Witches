@@ -1,8 +1,8 @@
 // material import not needed here
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'dart:math' show sin, cos;
-import 'package:flutter/widgets.dart' show Offset;
+import 'dart:math' show cos;
+import 'dart:ui' as ui;
 import 'package:metropulse/models/station_model.dart';
 import 'package:metropulse/widgets/crowd_badge.dart';
 
@@ -20,6 +20,9 @@ class MarkerUpdate {
 class MapMarkerStateManager {
   MarkerUpdate _state = MarkerUpdate(<Marker>{}, 1.0);
   MarkerUpdate get current => _state;
+
+  // Cache for large highlighted icons per crowd level
+  final Map<CrowdLevel, BitmapDescriptor> _largeIconCache = {};
 
   /// Update markers with a smooth transition based on new crowd levels
   /// Update markers with a smooth transition based on new crowd levels.
@@ -55,6 +58,11 @@ class MapMarkerStateManager {
       }
       final icon = _markerIconCache[level]!;
 
+      // Choose icon: use larger custom icon for highlighted station
+      final usedIcon = (highlightedStationId != null && highlightedStationId == station.id)
+          ? await _largeIconForLevel(level)
+          : icon;
+
       // Add the station-level marker
       // Decide zIndex to bring highlighted station to the front
       final z = (highlightedStationId != null && highlightedStationId == station.id) ? 2 : 1;
@@ -62,7 +70,7 @@ class MapMarkerStateManager {
         markerId: MarkerId(station.id),
         position: LatLng(station.latitude!, station.longitude!),
         infoWindow: InfoWindow(title: station.name, snippet: level.label),
-        icon: icon,
+        icon: usedIcon,
         alpha: 0.0, // Start invisible for fade-in
         zIndexInt: z,
       ));
@@ -72,15 +80,18 @@ class MapMarkerStateManager {
       if (showCoach && coachLevels != null) {
         final coaches = coachLevels[station.id];
         if (coaches != null && coaches.isNotEmpty) {
-          // spread coaches in a small circle around the station (approx offsets)
+          // arrange coaches linearly left/right of station (platform aligned)
           final entries = coaches.entries.toList();
           final count = entries.length;
+          // spacing in meters between coach markers
+          const spacingMeters = 10.0;
           for (var i = 0; i < count; i++) {
-            final angle = (2 * 3.141592653589793 * i) / count;
-            // ~10 meters offset
-            const offsetMeters = 12.0;
-            final dLat = (offsetMeters / 111320.0) * cos(angle);
-            final dLng = (offsetMeters / (111320.0 * cos(station.latitude! * (3.141592653589793 / 180)))) * sin(angle);
+            // index offset from center: 0 -> center, 1 -> left, 2 -> right, 3 -> left2, etc.
+            final idxFromCenter = (i.isEven) ? -(i ~/ 2) : ((i + 1) ~/ 2);
+            final offsetMeters = idxFromCenter * spacingMeters;
+            // convert meters to degrees roughly
+            final dLat = 0.0;
+            final dLng = (offsetMeters / (111320.0 * cos(station.latitude! * (3.141592653589793 / 180))));
             final coachPos = LatLng(station.latitude! + dLat, station.longitude! + dLng);
             final coachLevel = entries[i].value;
             final coachHue = switch (coachLevel) {
@@ -95,7 +106,6 @@ class MapMarkerStateManager {
               infoWindow: InfoWindow(title: '${station.name} - ${entries[i].key}', snippet: coachLevel.label),
               icon: coachIcon,
               alpha: 0.0,
-              anchor: const Offset(0.5, 0.5),
             ));
           }
         }
@@ -111,6 +121,45 @@ class MapMarkerStateManager {
     }
 
     return _state;
+  }
+
+  Future<BitmapDescriptor> _largeIconForLevel(CrowdLevel level) async {
+    if (_largeIconCache.containsKey(level)) return _largeIconCache[level]!;
+    // Create a simple circular bitmap with a colored fill for highlighted marker
+    const size = 96;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final fillColor = (level == CrowdLevel.low)
+        ? const ui.Color(0xFF4CAF50)
+        : (level == CrowdLevel.moderate)
+            ? const ui.Color(0xFFFFEB3B)
+            : const ui.Color(0xFFF44336);
+    final paint = ui.Paint()..style = ui.PaintingStyle.fill..color = fillColor;
+    final center = ui.Offset(size / 2, size / 2);
+    // outer circle
+    canvas.drawCircle(center, size / 2.0, paint);
+    // inner white circle
+    final inner = ui.Paint()..color = const ui.Color(0xFFFFFFFF);
+    canvas.drawCircle(center, size / 3.0, inner);
+    // stroke ring for contrast
+    final stroke = ui.Paint()
+      ..style = ui.PaintingStyle.stroke
+      // withOpacity is deprecated; use withValues to preserve precision.
+      ..color = const ui.Color(0xFF000000).withValues(alpha: 0.2)
+      ..strokeWidth = 4.0;
+    canvas.drawCircle(center, size / 2.0 - 2.0, stroke);
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(size, size);
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final u8 = bytes!.buffer.asUint8List();
+  // BitmapDescriptor.fromBytes is deprecated on some plugin versions.
+  // Use it defensively and silence the analyzer for now; if you upgrade the
+  // google_maps_flutter package to a version with a replacement API, prefer
+  // that instead. See package changelog for migration details.
+  // ignore: deprecated_member_use
+  final bd = BitmapDescriptor.fromBytes(u8);
+    _largeIconCache[level] = bd;
+    return bd;
   }
 }
 

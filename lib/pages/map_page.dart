@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:metropulse/state/map_marker_state.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
 
@@ -96,6 +97,18 @@ class _MapPageState extends ConsumerState<MapPage> {
               _updateMarkers();
             },
           ),
+          if (kDebugMode)
+            IconButton(
+              tooltip: 'Seed sample coach overrides (debug)',
+              icon: const Icon(Icons.bug_report),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await seedSampleCoachOverrides(count: 8);
+                if (!mounted) return;
+                messenger.showSnackBar(const SnackBar(content: Text('Seeded sample coach overrides')));
+                _updateMarkers();
+              },
+            ),
           const ReportCrowdButton(),
         ],
       ),

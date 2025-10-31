@@ -67,7 +67,21 @@ class ProfilePage extends ConsumerWidget {
                 final connected = <String>{};
                 if (identities != null) {
                   for (final id in identities) {
-                    final provider = id['provider'] as String?;
+                    String? provider;
+                    try {
+                      if (id is Map) {
+                        provider = id['provider'] as String?;
+                      } else {
+                        // Some Supabase SDKs return UserIdentity objects; attempt property access
+                        provider = (id as dynamic).provider as String?;
+                      }
+                    } catch (_) {
+                      try {
+                        provider = (id as dynamic)['provider'] as String?;
+                      } catch (_) {
+                        provider = null;
+                      }
+                    }
                     if (provider != null) connected.add(provider);
                   }
                 }

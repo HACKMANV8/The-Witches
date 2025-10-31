@@ -65,8 +65,11 @@ final aggregatedCrowdByStationProvider = Provider<Map<String, CrowdLevel>>((ref)
 /// Aggregated live crowd level per station broken down by coach position (if reports include coach_position).
 /// Map: stationId -> (coachPosition -> CrowdLevel)
 final aggregatedCrowdByStationCoachProvider = Provider<Map<String, Map<String, CrowdLevel>>>((ref) {
+  // Combine live-reports-derived coach map with any local coach overrides for dev/optimistic view.
   final reportsAsync = ref.watch(liveReportsProvider);
   final reports = reportsAsync.maybeWhen(data: (r) => r, orElse: () => <CrowdReportModel>[]);
+  final localAsync = ref.watch(localCoachOverridesProvider);
+  final local = localAsync.maybeWhen(data: (m) => m, orElse: () => <String, Map<String, CrowdLevel>>{});
 
   final Map<String, Map<String, CrowdLevel>> out = {};
   for (final r in reports) {
@@ -74,7 +77,19 @@ final aggregatedCrowdByStationCoachProvider = Provider<Map<String, Map<String, C
     if (coach == null) continue;
     final sid = r.stationId;
     final lvl = CrowdReportModel.toUiLevel(r.crowdLevelValue);
-    out.putIfAbsent(sid, () => <String, CrowdLevel>{})[coach] = lvl;
+    final tokens = coach.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    for (final t in tokens) {
+      out.putIfAbsent(sid, () => <String, CrowdLevel>{})[t] = lvl;
+    }
+  }
+
+  // merge local overrides (take precedence)
+  for (final entry in local.entries) {
+    final sid = entry.key;
+    final map = entry.value;
+    for (final cEntry in map.entries) {
+      out.putIfAbsent(sid, () => <String, CrowdLevel>{})[cEntry.key] = cEntry.value;
+    }
   }
 
   return out;
@@ -86,6 +101,48 @@ final aggregatedCrowdByStationCoachProvider = Provider<Map<String, Map<String, C
 final Map<String, CrowdLevel> _localCrowdOverrides = {};
 final Map<String, Timer> _localCrowdTimers = {};
 final _localCrowdOverridesController = StreamController<Map<String, CrowdLevel>>.broadcast();
+
+// Local coach-level overrides (dev / optimistic view). Map: stationId -> coachId -> CrowdLevel
+final Map<String, Map<String, CrowdLevel>> _localCoachOverrides = {};
+final Map<String, Map<String, Timer>> _localCoachTimers = {};
+final _localCoachOverridesController = StreamController<Map<String, Map<String, CrowdLevel>>>.broadcast();
+
+final localCoachOverridesProvider = StreamProvider<Map<String, Map<String, CrowdLevel>>>((ref) {
+  // do not close shared controller on dispose
+  ref.onDispose(() {});
+  return _localCoachOverridesController.stream;
+});
+
+/// Add a local coach-level override (dev / optimistic). coachId is a string token
+/// (e.g., '0' or 'rear') and ttl controls how long the override lasts.
+void addLocalCoachOverride(String stationId, String coachId, CrowdLevel level, {Duration ttl = const Duration(seconds: 30)}) {
+  _localCoachTimers.putIfAbsent(stationId, () => {})[coachId]?.cancel();
+  _localCoachOverrides.putIfAbsent(stationId, () => {})[coachId] = level;
+  _localCoachOverridesController.add(Map.fromEntries(_localCoachOverrides.entries.map((e) => MapEntry(e.key, Map<String, CrowdLevel>.from(e.value)))));
+  _localCoachTimers.putIfAbsent(stationId, () => {})[coachId] = Timer(ttl, () {
+    _localCoachTimers[stationId]?.remove(coachId);
+    _localCoachOverrides[stationId]?.remove(coachId);
+    if (_localCoachOverrides[stationId]?.isEmpty ?? false) _localCoachOverrides.remove(stationId);
+    _localCoachOverridesController.add(Map.fromEntries(_localCoachOverrides.entries.map((e) => MapEntry(e.key, Map<String, CrowdLevel>.from(e.value)))));
+  });
+}
+
+/// Dev helper: seed a few sample coach overrides for the first N stations so coach markers
+/// are visible without needing backend reports. This is intended for development only.
+Future<void> seedSampleCoachOverrides({int count = 5}) async {
+  try {
+    final stations = await StationService.getAllStations();
+    final take = stations.take(count).toList();
+    for (var i = 0; i < take.length; i++) {
+      final s = take[i];
+      if (s.latitude == null || s.longitude == null) continue;
+      // set coach 0 as low, coach 1 as moderate, coach 2 as high in a pattern
+      addLocalCoachOverride(s.id, '0', CrowdLevel.low, ttl: const Duration(minutes: 5));
+      addLocalCoachOverride(s.id, '1', CrowdLevel.moderate, ttl: const Duration(minutes: 5));
+      addLocalCoachOverride(s.id, '2', CrowdLevel.high, ttl: const Duration(minutes: 5));
+    }
+  } catch (_) {}
+}
 
 final localCrowdOverridesProvider = StreamProvider<Map<String, CrowdLevel>>((ref) {
   // Start by emitting current state and also watch live reports so we can
@@ -173,35 +230,94 @@ double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
 
 /// Recommended stations as a FutureProvider: returns up to 5 stations sorted by
 /// a weighted score of crowdLevel (live or predicted) and distance (if available).
-final recommendedStationsProvider = FutureProvider.family<List<StationModel>, String>((ref, stationId) async {
+/// Request object for recommended stations calculation.
+class RecommendedStationsRequest {
+  final String fromStationId;
+  final DateTime requestedAt;
+  const RecommendedStationsRequest({required this.fromStationId, required this.requestedAt});
+}
+
+/// Recommended stations provider that considers predicted crowds for the requested day/time.
+final recommendedStationsProvider = FutureProvider.family<List<StationModel>, RecommendedStationsRequest>((ref, req) async {
   final stations = await StationService.getAllStations();
   final aggregated = ref.watch(aggregatedCrowdByStationProvider);
   final pos = await ref.watch(currentLocationProvider.future);
 
-  // Fetch predicted crowds (latest per station) if available
-  Map<String, double> predictedMap = {};
+  // Fetch predicted crowds (latest per station) if available. We'll filter predictions for day and hour.
+  List<Map<String, dynamic>> preds = [];
   try {
-    final preds = await SupabaseService.select('predicted_crowds');
-    for (final p in preds) {
-      final sid = p['station_id'] as String?;
-      final val = (p['predicted_level'] as num?)?.toDouble();
-      if (sid != null && val != null) predictedMap[sid] = val;
-    }
+    final raw = await SupabaseService.select('predicted_crowds');
+    preds = List<Map<String, dynamic>>.from(raw.map((r) => Map<String, dynamic>.from(r)));
   } catch (e) {
-    // no predicted data available; ignore
+    preds = [];
+  }
+
+  // Helper to find predicted value for a station matching the requested day/hour
+  double? findPredictedForStation(String stationId) {
+    final weekday = _weekdayName(req.requestedAt.weekday);
+    final hour = req.requestedAt.hour;
+    // Search preds for matching station and day and hour-range containing hour
+    for (final p in preds) {
+      String? sid = p['station_id'] as String? ?? p['station'] as String?;
+      if (sid == null) continue;
+      if (sid != stationId) continue;
+      final day = p['day'] as String? ?? p['weekday'] as String?;
+      if (day == null) continue;
+      if (day.toLowerCase() != weekday.toLowerCase()) continue;
+      final range = p['hour_range'] as String? ?? p['time_range'] as String? ?? p['hour'] as String?;
+      if (range == null) continue;
+      // parse '04:00-05:00'
+      final parts = range.split('-');
+      if (parts.length != 2) continue;
+      try {
+        final start = int.parse(parts[0].split(':').first);
+        final end = int.parse(parts[1].split(':').first);
+        if (hour >= start && hour < end) {
+          final val = (p['predicted_level'] as num?)?.toDouble() ?? (p['level'] as num?)?.toDouble();
+          return val;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
   }
 
   // Build candidates excluding the origin station
-  final candidates = stations.where((s) => s.id != stationId && s.latitude != null && s.longitude != null).toList();
+  final candidates = stations.where((s) => s.id != req.fromStationId && s.latitude != null && s.longitude != null).toList();
 
-  // Score: lower is better. We'll compute normalized crowd score (1..3) and distance in meters.
+  // Precompute predicted map and fallback interpolation using nearest predicted station
+  final Map<String, double?> predictedMap = {};
+  for (final s in stations) {
+    predictedMap[s.id] = findPredictedForStation(s.id);
+  }
+
+  // For stations missing predicted, fill with nearest station's predicted value if available
+  for (final s in stations) {
+    if (predictedMap[s.id] == null) {
+      // find nearest station with a predicted value
+      double? bestVal;
+      double bestDist = double.infinity;
+      for (final other in stations) {
+        if (predictedMap[other.id] == null) continue;
+        if (other.latitude == null || other.longitude == null || s.latitude == null || s.longitude == null) continue;
+        final d = _haversineDistance(s.latitude!, s.longitude!, other.latitude!, other.longitude!);
+        if (d < bestDist) {
+          bestDist = d;
+          bestVal = predictedMap[other.id];
+        }
+      }
+      predictedMap[s.id] = bestVal ?? 2.0; // default to moderate if none available
+    }
+  }
+
+  // Score: lower is better. We'll compute normalized crowd score (1..3) and distance (if available).
   double crowdScore(String id) {
-    // prefer predicted, then aggregated, then default 2
-    if (predictedMap.containsKey(id)) {
-      final p = predictedMap[id]!; // assume 1..5 scale
-      // map to 1..3
-      if (p <= 2) return 1.0;
-      if (p <= 3) return 2.0;
+    final p = predictedMap[id];
+    if (p != null) {
+      // map predicted numeric value to 1..3
+      if (p <= 2.0) return 1.0;
+      if (p <= 3.0) return 2.0;
       return 3.0;
     }
     final lvl = aggregated[id];
@@ -228,6 +344,27 @@ final recommendedStationsProvider = FutureProvider.family<List<StationModel>, St
   scored.sort((a, b) => a.value.compareTo(b.value));
   return scored.map((e) => e.key).take(5).toList();
 });
+
+String _weekdayName(int weekday) {
+  // DateTime.weekday: 1=Mon .. 7=Sun. Map to common names.
+  switch (weekday) {
+    case 1:
+      return 'Monday';
+    case 2:
+      return 'Tuesday';
+    case 3:
+      return 'Wednesday';
+    case 4:
+      return 'Thursday';
+    case 5:
+      return 'Friday';
+    case 6:
+      return 'Saturday';
+    case 7:
+    default:
+      return 'Sunday';
+  }
+}
 
 // (The improved recommendedStationsProvider above replaces the simple one.)
 

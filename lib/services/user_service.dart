@@ -1,7 +1,9 @@
 import 'package:metropulse/models/user_model.dart';
 import 'package:metropulse/supabase/supabase_config.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class UserService {
+  static bool _createUserWarned = false;
   static Future<UserModel?> getUserById(String userId) async {
     try {
       final data = await SupabaseService.selectSingle('users', filters: {'id': userId});
@@ -22,8 +24,12 @@ class UserService {
       // application 'users' table yet.
       // In production you should create the `users` table in Supabase or handle
       // this error more explicitly.
-      // ignore: avoid_print
-      print('UserService.createUser warning: could not insert users table: $e');
+      // Log once to avoid spamming logs when the users table is missing.
+      if (!_createUserWarned) {
+        // ignore: avoid_print
+        debugPrint('UserService.createUser warning: could not insert users table: $e');
+        _createUserWarned = true;
+      }
       return user;
     }
   }

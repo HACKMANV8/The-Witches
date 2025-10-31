@@ -71,7 +71,7 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final stationsAsync = ref.watch(stationsProvider);
+  final stationsAsync = ref.watch(stationsProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Smart Trip Planner'),
@@ -104,16 +104,17 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Builder(builder: (context) {
-                            final recAsync = ref.watch(recommendedStationsProvider(fromStationId ?? ''));
+                            final req = RecommendedStationsRequest(fromStationId: fromStationId ?? '', requestedAt: DateTime.now());
+                            final recAsync = ref.watch(recommendedStationsProvider(req));
                             return recAsync.when(
                               data: (recs) {
                                 if (recs.isEmpty) return const SizedBox.shrink();
-                                return DropdownButtonFormField<String>(
-                                  initialValue: toStationId,
-                                  items: recs.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (recommended)'))).toList(),
-                                  decoration: const InputDecoration(prefixIcon: Icon(Icons.flag), hintText: 'Recommended alternatives'),
-                                  onChanged: (v) => setState(() => toStationId = v),
-                                );
+                                        return DropdownButtonFormField<String>(
+                                          initialValue: toStationId,
+                                          items: recs.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (recommended)'))).toList(),
+                                          decoration: const InputDecoration(prefixIcon: Icon(Icons.flag), hintText: 'Recommended alternatives'),
+                                          onChanged: (v) => setState(() => toStationId = v),
+                                        );
                               },
                               loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
                               error: (_, __) => const SizedBox.shrink(),
