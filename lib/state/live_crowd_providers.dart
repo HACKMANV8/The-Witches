@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import 'package:metropulse/models/crowd_report_model.dart';
 import 'package:metropulse/models/station_model.dart';
 import 'package:metropulse/services/crowd_report_service.dart';
@@ -54,8 +55,93 @@ final stationCrowdStreamProvider = StreamProvider<Map<String, CrowdLevel>>((ref)
 /// Aggregated live crowd level per station (avg over last 15 minutes).
 final aggregatedCrowdByStationProvider = Provider<Map<String, CrowdLevel>>((ref) {
   final streamVal = ref.watch(stationCrowdStreamProvider);
-  return streamVal.maybeWhen(data: (m) => m, orElse: () => <String, CrowdLevel>{});
+  final base = streamVal.maybeWhen(data: (m) => m, orElse: () => <String, CrowdLevel>{});
+  // Merge in any short-lived local optimistic overrides (submitted reports not yet reflected in the stream)
+  final overridesAsync = ref.watch(localCrowdOverridesProvider);
+  final overrides = overridesAsync.maybeWhen(data: (m) => m, orElse: () => <String, CrowdLevel>{});
+  return {...base, ...overrides};
 });
+
+/// Aggregated live crowd level per station broken down by coach position (if reports include coach_position).
+/// Map: stationId -> (coachPosition -> CrowdLevel)
+final aggregatedCrowdByStationCoachProvider = Provider<Map<String, Map<String, CrowdLevel>>>((ref) {
+  final reportsAsync = ref.watch(liveReportsProvider);
+  final reports = reportsAsync.maybeWhen(data: (r) => r, orElse: () => <CrowdReportModel>[]);
+
+  final Map<String, Map<String, CrowdLevel>> out = {};
+  for (final r in reports) {
+    final coach = r.coachPosition;
+    if (coach == null) continue;
+    final sid = r.stationId;
+    final lvl = CrowdReportModel.toUiLevel(r.crowdLevelValue);
+    out.putIfAbsent(sid, () => <String, CrowdLevel>{})[coach] = lvl;
+  }
+
+  return out;
+});
+
+/// Local short-lived crowd overrides applied optimistically when a user submits a report.
+
+// Use a broadcast StreamController to publish local override maps so providers can watch it.
+final Map<String, CrowdLevel> _localCrowdOverrides = {};
+final Map<String, Timer> _localCrowdTimers = {};
+final _localCrowdOverridesController = StreamController<Map<String, CrowdLevel>>.broadcast();
+
+final localCrowdOverridesProvider = StreamProvider<Map<String, CrowdLevel>>((ref) {
+  // Start by emitting current state and also watch live reports so we can
+  // automatically remove optimistic overrides when a matching real report
+  // appears in the stream (so the optimistic override doesn't linger).
+  // Note: do not close the global controller on dispose because it's shared
+  // for the app lifetime.
+  // Listen to the real-time recent reports stream and remove any overrides
+  // whose station + ui level matches a newly arrived report.
+  ref.listen<AsyncValue<List<CrowdReportModel>>>(
+    liveReportsProvider,
+    (previous, next) {
+      next.when(
+        data: (reports) {
+          var didChange = false;
+          for (final r in reports) {
+            final sid = r.stationId;
+            final uiLevel = CrowdReportModel.toUiLevel(r.crowdLevelValue);
+            final current = _localCrowdOverrides[sid];
+            if (current != null && current == uiLevel) {
+              // cancel any timer and remove override
+              _localCrowdTimers[sid]?.cancel();
+              _localCrowdTimers.remove(sid);
+              _localCrowdOverrides.remove(sid);
+              didChange = true;
+            }
+          }
+          if (didChange) {
+            _localCrowdOverridesController.add(Map<String, CrowdLevel>.from(_localCrowdOverrides));
+          }
+        },
+        loading: () {},
+        error: (_, __) {},
+      );
+    },
+  );
+
+  ref.onDispose(() {
+    // do not close the global controller (shared across app)
+  });
+
+  // emit current state as the stream's initial values will be produced by the controller
+  return _localCrowdOverridesController.stream;
+});
+
+void addLocalCrowdOverride(String stationId, CrowdLevel level, {Duration ttl = const Duration(seconds: 30)}) {
+  // cancel existing timer if present
+  _localCrowdTimers[stationId]?.cancel();
+  _localCrowdOverrides[stationId] = level;
+  _localCrowdOverridesController.add(Map<String, CrowdLevel>.from(_localCrowdOverrides));
+  _localCrowdTimers[stationId] = Timer(ttl, () {
+    _localCrowdTimers.remove(stationId);
+    _localCrowdOverrides.remove(stationId);
+    _localCrowdOverridesController.add(Map<String, CrowdLevel>.from(_localCrowdOverrides));
+  });
+}
 
 /// Provide current device location (if permission granted). Returns null on failure.
 final currentLocationProvider = FutureProvider<Position?>((ref) async {

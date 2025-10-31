@@ -86,7 +86,7 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                 return Column(
                   children: [
                     DropdownButtonFormField<String>(
-                      value: fromStationId,
+                      initialValue: fromStationId,
                       items: stations
                           .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, style: const TextStyle(color: Colors.black))))
                           .toList(),
@@ -109,7 +109,7 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                               data: (recs) {
                                 if (recs.isEmpty) return const SizedBox.shrink();
                                 return DropdownButtonFormField<String>(
-                                  value: toStationId,
+                                  initialValue: toStationId,
                                   items: recs.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (recommended)'))).toList(),
                                   decoration: const InputDecoration(prefixIcon: Icon(Icons.flag), hintText: 'Recommended alternatives'),
                                   onChanged: (v) => setState(() => toStationId = v),
@@ -124,7 +124,7 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: toStationId,
+                      initialValue: toStationId,
                       items: stations
                           .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, style: const TextStyle(color: Colors.black))))
                           .toList(),

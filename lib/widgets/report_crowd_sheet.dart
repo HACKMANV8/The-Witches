@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metropulse/models/crowd_report_model.dart';
 import 'package:metropulse/services/crowd_report_service.dart';
 import 'package:metropulse/state/location_providers.dart';
+import 'package:metropulse/state/live_crowd_providers.dart';
 import 'package:metropulse/theme.dart';
 // crowd_badge not required in this file
 
@@ -58,6 +59,11 @@ class _ReportCrowdContentState extends ConsumerState<_ReportCrowdContent> {
       coachPosition: coachIndices.isEmpty ? null : coachIndices.join(','),
       createdAt: now,
     );
+    // Optimistic local update so the map reflects the user's report immediately.
+    try {
+      final uiLevel = CrowdReportModel.toUiLevel(levelValue);
+      addLocalCrowdOverride(stationId, uiLevel, ttl: const Duration(seconds: 30));
+    } catch (_) {}
     await CrowdReportService.submitReport(report);
     if (!mounted) return;
     _confettiController.play();
