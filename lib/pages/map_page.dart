@@ -1,111 +1,76 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:metropulse/state/live_crowd_providers.dart';
 import 'package:metropulse/state/map_marker_state.dart';
-import 'package:metropulse/widgets/crowd_badge.dart';
-import 'package:metropulse/theme.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
 
-class MapPage extends ConsumerWidget {
+class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stationsAsync = ref.watch(stationsProvider);
-    final liveCrowd = ref.watch(aggregatedCrowdByStationProvider);
+  ConsumerState<MapPage> createState() => _MapPageState();
+}
 
-    final markerUpdate = stationsAsync.maybeWhen(
-      data: (stations) {
-        // Trigger update when stations or crowd data changes
-        ref.read(mapMarkerProvider.notifier).updateMarkers(stations, liveCrowd);
-        return ref.watch(mapMarkerProvider);
+class _MapPageState extends ConsumerState<MapPage> {
+  MarkerUpdate _lastMarkerUpdate = MarkerUpdate(const <Marker>{}, 1.0);
+  bool _isUpdating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateMarkers());
+  }
+
+  Future<void> _updateMarkers() async {
+    if (_isUpdating) return;
+    _isUpdating = true;
+
+    final stationsAsync = ref.read(stationsProvider);
+    final liveCrowd = ref.read(aggregatedCrowdByStationProvider);
+
+    await stationsAsync.when(
+      data: (stations) async {
+        final manager = ref.read(mapMarkerProvider);
+        final update = await manager.updateMarkers(stations, liveCrowd);
+        if (mounted) {
+          setState(() => _lastMarkerUpdate = update);
+        }
       },
-      orElse: () => MarkerUpdate(<Marker>{}, 1.0),
+      error: (_, __) {}, // Handle error appropriately
+      loading: () {},
     );
+
+    _isUpdating = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch for changes in live crowd data
+    ref.listen(stationCrowdStreamProvider, (_, __) => _updateMarkers());
 
     // Fallback camera to Bengaluru
     const fallbackCenter = LatLng(12.9716, 77.5946);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Live Crowd Map'),
-        actions: const [ReportCrowdButton()],
-      ),
-      body: Stack(
-        children: [
-          _SafeGoogleMap(
-            initialCameraPosition: const CameraPosition(target: fallbackCenter, zoom: 11),
-            markers: markerUpdate.markers,
-          ),
-          Positioned(
-            left: 16,
-            bottom: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _LegendDot(color: MPColors.green, label: 'Low'),
-                  SizedBox(width: 12),
-                  _LegendDot(color: MPColors.yellow, label: 'Moderate'),
-                  SizedBox(width: 12),
-                  _LegendDot(color: MPColors.red, label: 'High'),
-                ],
-              ),
-            ),
-          ),
+        title: const Text("Live Crowd Map"),
+        actions: const [
+          ReportCrowdButton(),
         ],
       ),
-    );
-  }
-}
-
-class _SafeGoogleMap extends StatelessWidget {
-  final CameraPosition initialCameraPosition;
-  final Set<Marker> markers;
-  const _SafeGoogleMap({required this.initialCameraPosition, required this.markers});
-
-  @override
-  Widget build(BuildContext context) {
-    try {
-      return GoogleMap(
-        myLocationButtonEnabled: false,
-        myLocationEnabled: false,
-        zoomControlsEnabled: false,
-        initialCameraPosition: initialCameraPosition,
-        markers: markers,
-      );
-    } catch (e) {
-      return Center(
-        child: Text(
-          'Map unavailable. Please check your Maps API key and internet connection.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)),
-          textAlign: TextAlign.center,
+      body: GoogleMap(
+        markers: _lastMarkerUpdate.markers,
+        initialCameraPosition: CameraPosition(
+          target: ref.watch(currentLocationProvider).maybeWhen(
+                data: (pos) => pos != null 
+                    ? LatLng(pos.latitude, pos.longitude) 
+                    : fallbackCenter,
+                orElse: () => fallbackCenter,
+              ),
+          zoom: 13,
         ),
-      );
-    }
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _LegendDot({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text(label),
-      ],
+      ),
     );
   }
 }

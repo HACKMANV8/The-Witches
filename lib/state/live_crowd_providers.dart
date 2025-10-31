@@ -143,11 +143,6 @@ final recommendedStationsProvider = FutureProvider.family<List<StationModel>, St
   return scored.map((e) => e.key).take(5).toList();
 });
 
-/// A simple periodic tick used to refresh route/summary screens every 5 minutes.
-final routeRefreshTickProvider = StreamProvider.autoDispose<DateTime>((ref) {
-  return Stream<DateTime>.periodic(const Duration(minutes: 5), (_) => DateTime.now());
-});
-
 // (The improved recommendedStationsProvider above replaces the simple one.)
 
 
