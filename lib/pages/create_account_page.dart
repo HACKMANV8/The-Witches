@@ -27,16 +27,18 @@ class _CreateAccountPageState extends ConsumerState<CreateAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter email and password')));
       return;
     }
+    if (!mounted) return;
     setState(() => isLoading = true);
-    final user = await authManager.createAccountWithEmail(
-      context,
-      emailController.text.trim(),
-      passwordController.text,
-    );
+    final user = await authManager.createAccountWithEmail(emailController.text.trim(), passwordController.text);
+    if (!mounted) return;
     setState(() => isLoading = false);
-    if (user != null && mounted) {
+    if (user != null) {
       ref.read(sessionProvider.notifier).signIn(user);
+      if (!mounted) return;
       Navigator.of(context).pop();
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to create account')));
     }
   }
 

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:metropulse/auth/auth_manager.dart';
@@ -8,7 +7,7 @@ import 'package:metropulse/supabase/supabase_config.dart';
 
 class SupabaseAuthManager extends AuthManager with EmailSignInManager, AnonymousSignInManager {
   @override
-  Future<User?> signInWithEmail(BuildContext context, String email, String password) async {
+  Future<User?> signInWithEmail(String email, String password) async {
     try {
       final response = await SupabaseConfig.auth.signInWithPassword(email: email, password: password);
       if (response.user != null) {
@@ -17,26 +16,18 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
       }
       return null;
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign in failed: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; return null to indicate failure.
       return null;
     }
   }
 
   @override
-  Future<User?> createAccountWithEmail(BuildContext context, String email, String password) async {
+  Future<User?> createAccountWithEmail(String email, String password) async {
     try {
       final response = await SupabaseConfig.auth.signUp(email: email, password: password);
       if (response.user != null) {
         await _ensureUserRecord(response.user!);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created! Please check your email for verification.')),
-          );
-        }
+        // Caller may show notifications on success
         return response.user;
       }
       return null;
@@ -52,17 +43,13 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
           }
         } catch (_) {}
       }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign up failed: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; return null to indicate failure.
       return null;
     }
   }
 
   @override
-  Future<User?> signInAnonymously(BuildContext context) async {
+  Future<User?> signInAnonymously() async {
     try {
       final response = await SupabaseConfig.auth.signInAnonymously();
       if (response.user != null) {
@@ -71,11 +58,7 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
       }
       return null;
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Anonymous sign in failed: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; return null to indicate failure.
       return null;
     }
   }
@@ -86,7 +69,7 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
   }
 
   @override
-  Future deleteUser(BuildContext context) async {
+  Future deleteUser() async {
     try {
       final user = SupabaseConfig.auth.currentUser;
       if (user != null) {
@@ -94,47 +77,27 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
         await SupabaseConfig.client.rpc('delete_user');
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; swallow error for best-effort.
     }
   }
 
   @override
-  Future updateEmail({required String email, required BuildContext context}) async {
+  Future updateEmail({required String email}) async {
     try {
       await SupabaseConfig.auth.updateUser(UserAttributes(email: email));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email updated successfully')),
-        );
-      }
+      // Caller may notify user on success
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update email: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; swallow error here.
     }
   }
 
   @override
-  Future resetPassword({required String email, required BuildContext context}) async {
+  Future resetPassword({required String email}) async {
     try {
       await SupabaseConfig.auth.resetPasswordForEmail(email);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent')),
-        );
-      }
+      // Caller may notify user on success
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send reset email: ${e.toString()}')),
-        );
-      }
+      // Caller should handle UI notifications; swallow error here.
     }
   }
 
@@ -158,28 +121,24 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
   /// Start OAuth sign-in for the given provider. This will open the browser
   /// and rely on the `onAuthStateChange` listener in `SessionController` to
   /// pick up the authenticated user when the flow completes.
-  Future<void> signInWithGoogle(BuildContext context) async {
+  Future<void> signInWithGoogle() async {
     try {
       // Construct the Supabase authorize URL and open it in the external browser.
       final callback = '${SupabaseConfig.supabaseUrl}/auth/v1/callback';
       final url = '${SupabaseConfig.supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${Uri.encodeComponent(callback)}';
       await launchUrlString(url, mode: LaunchMode.externalApplication);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google sign-in failed: ${e.toString()}')));
-      }
+      // Caller should handle UI notifications; ignore here.
     }
   }
 
-  Future<void> signInWithGithub(BuildContext context) async {
+  Future<void> signInWithGithub() async {
     try {
       final callback = '${SupabaseConfig.supabaseUrl}/auth/v1/callback';
       final url = '${SupabaseConfig.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${Uri.encodeComponent(callback)}';
       await launchUrlString(url, mode: LaunchMode.externalApplication);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('GitHub sign-in failed: ${e.toString()}')));
-      }
+      // Caller should handle UI notifications; ignore here.
     }
   }
 }

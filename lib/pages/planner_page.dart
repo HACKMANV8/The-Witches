@@ -43,7 +43,9 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
 
   Future<void> _useMyLocationAsFrom() async {
     final pos = await ref.read(currentLocationProvider.future);
+    if (!mounted) return;
     if (pos == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location not available or permission denied')));
       return;
     }
@@ -60,7 +62,9 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
       }
     }
     if (nearest != null) {
+      if (!mounted) return;
       setState(() => fromStationId = nearest!.id);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Using nearest station: ${nearest.name}')));
     }
   }

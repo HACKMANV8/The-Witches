@@ -5,7 +5,7 @@ import 'package:metropulse/models/crowd_report_model.dart';
 import 'package:metropulse/services/crowd_report_service.dart';
 import 'package:metropulse/state/location_providers.dart';
 import 'package:metropulse/theme.dart';
-import 'package:metropulse/widgets/crowd_badge.dart';
+// crowd_badge not required in this file
 
 /// Call this to open the bottom sheet.
 Future<void> showReportCrowdSheet(BuildContext context) async {
@@ -94,7 +94,10 @@ class _ReportCrowdContentState extends ConsumerState<_ReportCrowdContent> {
         ),
         actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
       ),
-    ).then((_) => Navigator.of(context).maybePop());
+    ).then((_) {
+      if (!mounted) return;
+      Navigator.of(context).maybePop();
+    });
   }
 
   @override

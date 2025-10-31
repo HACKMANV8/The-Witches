@@ -99,8 +99,10 @@ class ProfilePage extends ConsumerWidget {
                                       await SupabaseConfig.client.rpc('unlink_oauth_provider', params: {
                                         'provider': 'google',
                                       });
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google disconnected')));
                                     } catch (e) {
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disconnect failed')));
                                     }
                                   }
@@ -142,8 +144,10 @@ class ProfilePage extends ConsumerWidget {
                                       await SupabaseConfig.client.rpc('unlink_oauth_provider', params: {
                                         'provider': 'github',
                                       });
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('GitHub disconnected')));
                                     } catch (e) {
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disconnect failed')));
                                     }
                                   }

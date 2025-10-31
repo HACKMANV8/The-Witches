@@ -33,29 +33,33 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       return;
     }
 
-    setState(() => isLoading = true);
+  if (!mounted) return;
+  setState(() => isLoading = true);
 
-    final user = createAccount
-        ? await authManager.createAccountWithEmail(context, emailController.text.trim(), passwordController.text)
-        : await authManager.signInWithEmail(context, emailController.text.trim(), passwordController.text);
+  final user = createAccount
+    ? await authManager.createAccountWithEmail(emailController.text.trim(), passwordController.text)
+    : await authManager.signInWithEmail(emailController.text.trim(), passwordController.text);
 
+    if (!mounted) return;
     setState(() => isLoading = false);
 
-    if (user != null && mounted) {
+    if (user != null) {
       ref.read(sessionProvider.notifier).signIn(user);
+      if (!mounted) return;
       Navigator.of(context).pop();
     }
   }
 
   Future<void> _handleGuestSignIn() async {
-    setState(() => isLoading = true);
-    final user = await authManager.signInAnonymously(context);
+  if (!mounted) return;
+  setState(() => isLoading = true);
+  await authManager.signInAnonymously();
+  if (!mounted) return;
     setState(() => isLoading = false);
 
-    if (mounted) {
-      ref.read(sessionProvider.notifier).continueAsGuest();
-      Navigator.of(context).pop();
-    }
+    ref.read(sessionProvider.notifier).continueAsGuest();
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -134,8 +138,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             onPressed: isLoading
                                 ? null
                                 : () async {
+                                    if (!mounted) return;
                                     setState(() => isLoading = true);
-                                    await authManager.signInWithGoogle(context);
+                                    await authManager.signInWithGoogle();
+                                    if (!mounted) return;
                                     setState(() => isLoading = false);
                                   },
                             icon: const Icon(Icons.login),
@@ -148,8 +154,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             onPressed: isLoading
                                 ? null
                                 : () async {
+                                    if (!mounted) return;
                                     setState(() => isLoading = true);
-                                    await authManager.signInWithGithub(context);
+                                    await authManager.signInWithGithub();
+                                    if (!mounted) return;
                                     setState(() => isLoading = false);
                                   },
                             icon: const Icon(Icons.code),
