@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:metropulse/state/map_marker_state.dart';
 import 'package:metropulse/widgets/crowd_badge.dart';
 import 'package:metropulse/theme.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
@@ -14,32 +15,13 @@ class MapPage extends ConsumerWidget {
     final stationsAsync = ref.watch(stationsProvider);
     final liveCrowd = ref.watch(aggregatedCrowdByStationProvider);
 
-    final markers = stationsAsync.maybeWhen(
+    final markerUpdate = stationsAsync.maybeWhen(
       data: (stations) {
-        // Skip stations without coordinates to avoid passing null to LatLng
-        return stations
-            .where((s) => s.latitude != null && s.longitude != null)
-            .map((s) {
-          final level = liveCrowd[s.id];
-          final hue = switch (level) {
-            CrowdLevel.low => BitmapDescriptor.hueGreen,
-            CrowdLevel.moderate => BitmapDescriptor.hueYellow,
-            CrowdLevel.high => BitmapDescriptor.hueRed,
-            null => BitmapDescriptor.hueAzure,
-          };
-
-          final lat = s.latitude!;
-          final lng = s.longitude!;
-
-          return Marker(
-            markerId: MarkerId(s.id),
-            position: LatLng(lat, lng),
-            infoWindow: InfoWindow(title: s.name, snippet: level?.label ?? 'No recent data'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(hue),
-          );
-        }).toSet();
+        // Trigger update when stations or crowd data changes
+        ref.read(mapMarkerProvider.notifier).updateMarkers(stations, liveCrowd);
+        return ref.watch(mapMarkerProvider);
       },
-      orElse: () => <Marker>{},
+      orElse: () => MarkerUpdate(<Marker>{}, 1.0),
     );
 
     // Fallback camera to Bengaluru
@@ -54,7 +36,7 @@ class MapPage extends ConsumerWidget {
         children: [
           _SafeGoogleMap(
             initialCameraPosition: const CameraPosition(target: fallbackCenter, zoom: 11),
-            markers: markers,
+            markers: markerUpdate.markers,
           ),
           Positioned(
             left: 16,

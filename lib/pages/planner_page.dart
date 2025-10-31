@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metropulse/services/route_service.dart';
 import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:metropulse/services/station_service.dart';
+import 'package:metropulse/models/station_model.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:metropulse/widgets/route_card.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
-import 'package:metropulse/pages/route_detail_page.dart';
+import 'package:metropulse/pages/route_results_page.dart';
 
 class PlannerPage extends ConsumerStatefulWidget {
   const PlannerPage({super.key});
@@ -38,6 +41,30 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
     }
   }
 
+  Future<void> _useMyLocationAsFrom() async {
+    final pos = await ref.read(currentLocationProvider.future);
+    if (pos == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location not available or permission denied')));
+      return;
+    }
+    // Find nearest station
+    final stations = await StationService.getAllStations();
+    StationModel? nearest;
+    double best = double.infinity;
+    for (final s in stations) {
+      if (s.latitude == null || s.longitude == null) continue;
+      final d = Geolocator.distanceBetween(pos.latitude, pos.longitude, s.latitude!, s.longitude!);
+      if (d < best) {
+        best = d;
+        nearest = s;
+      }
+    }
+    if (nearest != null) {
+      setState(() => fromStationId = nearest!.id);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Using nearest station: ${nearest.name}')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final stationsAsync = ref.watch(stationsProvider);
@@ -61,6 +88,35 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                           .toList(),
                       decoration: const InputDecoration(prefixIcon: Icon(Icons.place), hintText: 'From'),
                       onChanged: (v) => setState(() => fromStationId = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _useMyLocationAsFrom,
+                          icon: const Icon(Icons.my_location),
+                          label: const Text('Use my location'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Builder(builder: (context) {
+                            final recAsync = ref.watch(recommendedStationsProvider(fromStationId ?? ''));
+                            return recAsync.when(
+                              data: (recs) {
+                                if (recs.isEmpty) return const SizedBox.shrink();
+                                return DropdownButtonFormField<String>(
+                                  value: toStationId,
+                                  items: recs.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (recommended)'))).toList(),
+                                  decoration: const InputDecoration(prefixIcon: Icon(Icons.flag), hintText: 'Recommended alternatives'),
+                                  onChanged: (v) => setState(() => toStationId = v),
+                                );
+                              },
+                              loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
+                              error: (_, __) => const SizedBox.shrink(),
+                            );
+                          }),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -99,9 +155,8 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                             title: r.title,
                             accentColor: r.accent,
                             tip: r.tip,
-                            onView: () => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const RouteDetailPage()),
-                            ),
+                            onView: () => Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => RouteResultsPage(fromStationId: fromStationId!, toStationId: toStationId!))),
                           ),
                           const SizedBox(height: 12),
                         ],
