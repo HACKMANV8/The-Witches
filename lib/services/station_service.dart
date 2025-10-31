@@ -13,7 +13,7 @@ class StationService {
   }
 
   static Future<List<StationModel>> getStationsByLine(String lineColor) async {
-    final data = await SupabaseService.select('stations', filters: {'line_color': lineColor}, orderBy: 'name');
+    final data = await SupabaseService.select('stations', filters: {'line': lineColor}, orderBy: 'name');
     return data.map((json) => StationModel.fromJson(json)).toList();
   }
 
@@ -22,12 +22,5 @@ class StationService {
     return data.map((json) => StationModel.fromJson(json)).toList();
   }
 
-  static Future<StationModel> updateStation(StationModel station) async {
-    final data = await SupabaseService.update(
-      'stations',
-      station.toJson(),
-      filters: {'id': station.id},
-    );
-    return StationModel.fromJson(data.first);
-  }
+  // Updating stations is not required for this MVP schema
 }

@@ -21,7 +21,9 @@ final aggregatedCrowdByStationProvider = Provider<Map<String, CrowdLevel>>((ref)
 
   final Map<String, List<CrowdLevel>> stationToLevels = {};
   for (final report in reports) {
-    stationToLevels.putIfAbsent(report.stationId, () => <CrowdLevel>[]).add(report.crowdLevel);
+    stationToLevels
+        .putIfAbsent(report.stationId, () => <CrowdLevel>[]) 
+        .add(CrowdReportModel.toUiLevel(report.crowdLevelValue));
   }
 
   CrowdLevel levelFromAverage(double avg) {
@@ -39,6 +41,32 @@ final aggregatedCrowdByStationProvider = Provider<Map<String, CrowdLevel>>((ref)
     result[entry.key] = levelFromAverage(avg);
   }
   return result;
+});
+
+/// Simple recommendation provider: for a given stationId, return up to [limit]
+/// nearby/alternative stations sorted by crowd level ascending (less crowded first).
+/// Currently 'nearby' is approximated by returning other stations; this can be
+/// improved with geospatial distance if location is available.
+final recommendedStationsProvider = Provider.family<List<StationModel>, String>((ref, stationId) {
+  final stationsAsync = ref.watch(stationsProvider);
+  final aggregated = ref.watch(aggregatedCrowdByStationProvider);
+
+  final stations = stationsAsync.maybeWhen(data: (s) => s, orElse: () => const <StationModel>[]);
+  // Exclude the same station and sort by crowd level (unknown -> last)
+  final List<StationModel> candidates = stations.where((s) => s.id != stationId).toList();
+
+  candidates.sort((a, b) {
+    final la = aggregated[a.id];
+    final lb = aggregated[b.id];
+    if (la == null && lb == null) return 0;
+    if (la == null) return 1;
+    if (lb == null) return -1;
+    int va = la == CrowdLevel.low ? 1 : la == CrowdLevel.moderate ? 2 : 3;
+    int vb = lb == CrowdLevel.low ? 1 : lb == CrowdLevel.moderate ? 2 : 3;
+    return va.compareTo(vb);
+  });
+
+  return candidates.take(5).toList();
 });
 
 

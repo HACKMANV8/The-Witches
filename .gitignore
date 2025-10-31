@@ -3,7 +3,9 @@
 *.log
 *.pyc
 *.swp
-.DS_Store .atom/ .buildlog/ .history .svn/
+*.env
+.DS_Store .atom/ .buildlog/ .history .svn/ 
+spec/*
 
 # Flutter/Dart packages
 .packages .pub-cache/ .pub/

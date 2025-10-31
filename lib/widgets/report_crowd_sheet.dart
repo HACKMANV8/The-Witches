@@ -47,24 +47,16 @@ class _ReportCrowdContentState extends ConsumerState<_ReportCrowdContent> {
     super.dispose();
   }
 
-  CrowdLevel _mapSelectionToCrowdLevel(int index) {
-    if (index <= 1) return CrowdLevel.low;
-    if (index == 2) return CrowdLevel.moderate;
-    return CrowdLevel.high;
-  }
-
   Future<void> _submit(String stationId, {String? userId}) async {
     setState(() => submitting = true);
     final now = DateTime.now();
+    final levelValue = selectionIndex + 1; // 1..5 scale
     final report = CrowdReportModel(
-      id: now.microsecondsSinceEpoch.toString(),
       stationId: stationId,
       userId: userId,
-      crowdLevel: _mapSelectionToCrowdLevel(selectionIndex),
-      timestamp: now,
-      isAnonymous: userId == null,
+      crowdLevelValue: levelValue,
+      coachPosition: coachIndices.isEmpty ? null : coachIndices.join(','),
       createdAt: now,
-      updatedAt: now,
     );
     await CrowdReportService.submitReport(report);
     if (!mounted) return;

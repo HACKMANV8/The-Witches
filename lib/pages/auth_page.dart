@@ -124,6 +124,40 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       onPressed: isLoading ? null : _handleGuestSignIn,
                       child: const Text('Continue as Guest'),
                     ),
+                    const SizedBox(height: 8),
+                    // OAuth sign-in: starts external browser flow. SessionController
+                    // will pick up the authenticated user via onAuthStateChange.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    setState(() => isLoading = true);
+                                    await authManager.signInWithGoogle(context);
+                                    setState(() => isLoading = false);
+                                  },
+                            icon: const Icon(Icons.login),
+                            label: const Text('Sign in with Google'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    setState(() => isLoading = true);
+                                    await authManager.signInWithGithub(context);
+                                    setState(() => isLoading = false);
+                                  },
+                            icon: const Icon(Icons.code),
+                            label: const Text('Sign in with GitHub'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

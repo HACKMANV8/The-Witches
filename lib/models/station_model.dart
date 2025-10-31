@@ -1,80 +1,52 @@
-import 'package:metropulse/widgets/crowd_badge.dart';
-
 class StationModel {
-  final String id;
+  final String id; // UUID
+  final String stationCode;
   final String name;
-  final String code;
-  final String lineColor;
-  final double latitude;
-  final double longitude;
-  final CrowdLevel? currentCrowdLevel;
-  final DateTime? lastUpdated;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? line;
+  final double? latitude;
+  final double? longitude;
 
   const StationModel({
     required this.id,
+    required this.stationCode,
     required this.name,
-    required this.code,
-    required this.lineColor,
-    required this.latitude,
-    required this.longitude,
-    this.currentCrowdLevel,
-    this.lastUpdated,
-    required this.createdAt,
-    required this.updatedAt,
+    this.line,
+    this.latitude,
+    this.longitude,
   });
 
   factory StationModel.fromJson(Map<String, dynamic> json) => StationModel(
         id: json['id'] as String,
+        stationCode: json['station_code'] as String,
         name: json['name'] as String,
-        code: json['code'] as String,
-        lineColor: json['line_color'] as String,
-        latitude: (json['latitude'] as num).toDouble(),
-        longitude: (json['longitude'] as num).toDouble(),
-        currentCrowdLevel: json['current_crowd_level'] != null
-            ? CrowdLevel.values.firstWhere((e) => e.name == json['current_crowd_level'])
-            : null,
-        lastUpdated: json['last_updated'] != null ? DateTime.parse(json['last_updated'] as String) : null,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        updatedAt: DateTime.parse(json['updated_at'] as String),
+        line: json['line'] as String?,
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'station_code': stationCode,
         'name': name,
-        'code': code,
-        'line_color': lineColor,
+        'line': line,
         'latitude': latitude,
         'longitude': longitude,
-        'current_crowd_level': currentCrowdLevel?.name,
-        'last_updated': lastUpdated?.toIso8601String(),
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
       };
 
   StationModel copyWith({
     String? id,
+    String? stationCode,
     String? name,
-    String? code,
-    String? lineColor,
+    String? line,
     double? latitude,
     double? longitude,
-    CrowdLevel? currentCrowdLevel,
-    DateTime? lastUpdated,
-    DateTime? createdAt,
-    DateTime? updatedAt,
   }) =>
       StationModel(
         id: id ?? this.id,
+        stationCode: stationCode ?? this.stationCode,
         name: name ?? this.name,
-        code: code ?? this.code,
-        lineColor: lineColor ?? this.lineColor,
+        line: line ?? this.line,
         latitude: latitude ?? this.latitude,
         longitude: longitude ?? this.longitude,
-        currentCrowdLevel: currentCrowdLevel ?? this.currentCrowdLevel,
-        lastUpdated: lastUpdated ?? this.lastUpdated,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
       );
 }

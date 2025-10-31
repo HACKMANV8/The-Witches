@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:metropulse/auth/auth_manager.dart';
 import 'package:metropulse/models/user_model.dart';
 import 'package:metropulse/services/user_service.dart';
@@ -140,6 +141,34 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager, Anonymous
           updatedAt: now,
         ),
       );
+    }
+  }
+
+  /// Start OAuth sign-in for the given provider. This will open the browser
+  /// and rely on the `onAuthStateChange` listener in `SessionController` to
+  /// pick up the authenticated user when the flow completes.
+  Future<void> signInWithGoogle(BuildContext context) async {
+    try {
+      // Construct the Supabase authorize URL and open it in the external browser.
+      final callback = '${SupabaseConfig.supabaseUrl}/auth/v1/callback';
+      final url = '${SupabaseConfig.supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${Uri.encodeComponent(callback)}';
+      await launchUrlString(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google sign-in failed: ${e.toString()}')));
+      }
+    }
+  }
+
+  Future<void> signInWithGithub(BuildContext context) async {
+    try {
+      final callback = '${SupabaseConfig.supabaseUrl}/auth/v1/callback';
+      final url = '${SupabaseConfig.supabaseUrl}/auth/v1/authorize?provider=github&redirect_to=${Uri.encodeComponent(callback)}';
+      await launchUrlString(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('GitHub sign-in failed: ${e.toString()}')));
+      }
     }
   }
 }

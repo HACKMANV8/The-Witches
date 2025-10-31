@@ -123,7 +123,7 @@ class ProfilePage extends ConsumerWidget {
 int _computeDailyStreak(List<CrowdReportModel> reports) {
   if (reports.isEmpty) return 0;
   final dates = reports
-      .map((r) => DateTime(r.timestamp.year, r.timestamp.month, r.timestamp.day))
+      .map((r) => DateTime(r.createdAt.year, r.createdAt.month, r.createdAt.day))
       .toSet()
       .toList()
     ..sort((a, b) => b.compareTo(a));

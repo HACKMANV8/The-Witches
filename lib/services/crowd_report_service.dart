@@ -3,7 +3,14 @@ import 'package:metropulse/supabase/supabase_config.dart';
 
 class CrowdReportService {
   static Future<CrowdReportModel> submitReport(CrowdReportModel report) async {
-    final data = await SupabaseService.insert('crowd_reports', report.toJson());
+    // Let DB generate id/created_at; send numeric crowd_level and coach_position
+    final insert = {
+      'station_id': report.stationId,
+      'user_id': report.userId,
+      'crowd_level': report.crowdLevelValue,
+      if (report.coachPosition != null) 'coach_position': report.coachPosition,
+    };
+    final data = await SupabaseService.insert('crowd_reports', insert);
     return CrowdReportModel.fromJson(data.first);
   }
 
@@ -11,7 +18,7 @@ class CrowdReportService {
     final data = await SupabaseService.select(
       'crowd_reports',
       filters: {'station_id': stationId},
-      orderBy: 'timestamp',
+      orderBy: 'created_at',
       ascending: false,
       limit: limit,
     );
@@ -21,7 +28,7 @@ class CrowdReportService {
   static Future<List<CrowdReportModel>> getRecentReports({int limit = 20}) async {
     final data = await SupabaseService.select(
       'crowd_reports',
-      orderBy: 'timestamp',
+      orderBy: 'created_at',
       ascending: false,
       limit: limit,
     );
@@ -32,7 +39,7 @@ class CrowdReportService {
     final data = await SupabaseService.select(
       'crowd_reports',
       filters: {'user_id': userId},
-      orderBy: 'timestamp',
+      orderBy: 'created_at',
       ascending: false,
       limit: limit,
     );
@@ -47,8 +54,8 @@ class CrowdReportService {
         .map((rows) {
           final cutoff = DateTime.now().subtract(window);
           final parsed = rows.map((json) => CrowdReportModel.fromJson(json)).toList();
-          parsed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-          return parsed.where((r) => r.timestamp.isAfter(cutoff)).toList();
+          parsed.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return parsed.where((r) => r.createdAt.isAfter(cutoff)).toList();
         });
   }
 
@@ -60,8 +67,8 @@ class CrowdReportService {
         .map((rows) {
           final cutoff = DateTime.now().subtract(window);
           final parsed = rows.map((json) => CrowdReportModel.fromJson(json)).toList();
-          parsed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-          return parsed.where((r) => r.stationId == stationId && r.timestamp.isAfter(cutoff)).toList();
+          parsed.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return parsed.where((r) => r.stationId == stationId && r.createdAt.isAfter(cutoff)).toList();
         });
   }
 }

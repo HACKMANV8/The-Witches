@@ -31,10 +31,14 @@
 
   <title>metropulse</title>
   <link rel="manifest" href="manifest.json">
-  <!-- Google Maps JS API for web plugin -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=%GMAPS_API_KEY%"></script>
+  <!-- Google Maps Web: API key for google_maps_flutter_web -->
+  <meta name="google_maps_api_key" content="AIzaSyDEuWmFxTXkSnKJFbJMjatvsQcU-q275bQ">
 </head>
 <body>
+  <!-- Load Google Maps JS (used by google_maps_flutter_web). The meta above
+       is also used by some plugin versions; we include the script to be
+       explicit for web deployments. -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEuWmFxTXkSnKJFbJMjatvsQcU-q275bQ&libraries=places"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

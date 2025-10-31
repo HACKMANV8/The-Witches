@@ -16,7 +16,10 @@ class MapPage extends ConsumerWidget {
 
     final markers = stationsAsync.maybeWhen(
       data: (stations) {
-        return stations.map((s) {
+        // Skip stations without coordinates to avoid passing null to LatLng
+        return stations
+            .where((s) => s.latitude != null && s.longitude != null)
+            .map((s) {
           final level = liveCrowd[s.id];
           final hue = switch (level) {
             CrowdLevel.low => BitmapDescriptor.hueGreen,
@@ -24,10 +27,13 @@ class MapPage extends ConsumerWidget {
             CrowdLevel.high => BitmapDescriptor.hueRed,
             null => BitmapDescriptor.hueAzure,
           };
-        
+
+          final lat = s.latitude!;
+          final lng = s.longitude!;
+
           return Marker(
             markerId: MarkerId(s.id),
-            position: LatLng(s.latitude, s.longitude),
+            position: LatLng(lat, lng),
             infoWindow: InfoWindow(title: s.name, snippet: level?.label ?? 'No recent data'),
             icon: BitmapDescriptor.defaultMarkerWithHue(hue),
           );
