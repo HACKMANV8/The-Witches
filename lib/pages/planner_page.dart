@@ -8,6 +8,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:metropulse/widgets/route_card.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
 import 'package:metropulse/pages/route_results_page.dart';
+import 'package:metropulse/widgets/predicted_stations_list.dart';
+import 'package:metropulse/widgets/crowd_legend.dart';
 
 class PlannerPage extends ConsumerStatefulWidget {
   const PlannerPage({super.key});
@@ -24,18 +26,46 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
 
   Future<void> _findRoutes() async {
     if (fromStationId == null || toStationId == null) return;
+    
+    if (fromStationId == toStationId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select different stations for origin and destination'))
+      );
+      return;
+    }
+    
     setState(() => loading = true);
     try {
       final routes = await RouteService.findRoutes(fromStationId: fromStationId!, toStationId: toStationId!);
+      
+      if (!mounted) return;
+      
+      if (routes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No routes found between these stations'))
+        );
+        setState(() {
+          results = [];
+          loading = false;
+        });
+        return;
+      }
+      
       setState(() {
         results = routes
             .map((r) => RouteModelWrapper(
-                  title: 'Duration: ${r.durationMinutes} min • ₹${r.fare.toStringAsFixed(0)}',
-                  tip: r.intermediateStationIds.isEmpty ? 'Direct' : '${r.intermediateStationIds.length} stops',
-                  accent: Colors.black,
+                  title: 'Duration: ${r.durationMinutes} min • ₹${r.fare.toStringAsFixed(2)}',
+                  tip: r.intermediateStationIds.isEmpty ? 'Direct Route' : '${r.intermediateStationIds.length} stops',
+                  accent: r.intermediateStationIds.isEmpty ? Colors.green : Colors.orange,
                 ))
             .toList();
       });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error finding routes: ${e.toString()}'))
+      );
+      setState(() => results = []);
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -151,10 +181,32 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView(
-                children: results.isEmpty
-                    ? [const Text('No routes yet', style: TextStyle(color: Colors.black))]
-                    : [
+              child: results.isEmpty
+                  ? stationsAsync.when(
+                      data: (stations) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('All Stations', style: Theme.of(context).textTheme.titleMedium),
+                                const CrowdLegend(),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            PredictedStationsList(
+                              stations: stations,
+                              onStationTap: (id) => setState(() => toStationId = id),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (_, __) => const Text('Unable to load stations'),
+                    )
+                  : ListView(
+                      children: [
                         for (final r in results) ...[
                           RouteCard(
                             title: r.title,
@@ -166,7 +218,7 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
                           const SizedBox(height: 12),
                         ],
                       ],
-              ),
+                    ),
             )
           ],
         ),

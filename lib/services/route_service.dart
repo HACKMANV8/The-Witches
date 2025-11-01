@@ -6,12 +6,26 @@ class RouteService {
     required String fromStationId,
     required String toStationId,
   }) async {
-    final data = await SupabaseService.select(
-      'routes',
-      filters: {'from_station_id': fromStationId, 'to_station_id': toStationId},
-      orderBy: 'duration_minutes',
-    );
-    return data.map((json) => RouteModel.fromJson(json)).toList();
+    try {
+      // Use the find_or_calculate_route function
+      final response = await SupabaseConfig.client
+          .rpc('find_or_calculate_route', params: {
+        'from_code': fromStationId,
+        'to_code': toStationId,
+      });
+      
+      if (response == null) return [];
+      
+      if (response is List) {
+        return response.map((json) => RouteModel.fromJson(json)).toList();
+      } else {
+        // Single route returned
+        return [RouteModel.fromJson(response)];
+      }
+    } catch (e) {
+      print('Error finding routes: $e');
+      return [];
+    }
   }
 
   static Future<RouteModel?> getRouteById(String routeId) async {

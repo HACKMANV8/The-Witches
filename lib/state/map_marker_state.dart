@@ -152,12 +152,8 @@ class MapMarkerStateManager {
     final img = await picture.toImage(size, size);
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
     final u8 = bytes!.buffer.asUint8List();
-  // BitmapDescriptor.fromBytes is deprecated on some plugin versions.
-  // Use it defensively and silence the analyzer for now; if you upgrade the
-  // google_maps_flutter package to a version with a replacement API, prefer
-  // that instead. See package changelog for migration details.
-  // ignore: deprecated_member_use
-  final bd = BitmapDescriptor.fromBytes(u8);
+    // Use bytes() for google_maps_flutter >= 2.13.1
+    final bd = BitmapDescriptor.bytes(u8);
     _largeIconCache[level] = bd;
     return bd;
   }

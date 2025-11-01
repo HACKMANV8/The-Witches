@@ -6,9 +6,30 @@ import 'package:metropulse/services/crowd_report_service.dart';
 import 'package:metropulse/models/crowd_report_model.dart';
 import 'package:metropulse/supabase/supabase_config.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
+
+  Future<bool?> _showDisconnectDialog(BuildContext context, String provider) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Disconnect $provider'),
+        content: Text('Unlink $provider from your account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Disconnect'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,18 +90,16 @@ class ProfilePage extends ConsumerWidget {
                   for (final id in identities) {
                     String? provider;
                     try {
-                      if (id is Map) {
+                      if (id is Map<String, dynamic>) {
                         provider = id['provider'] as String?;
+                      } else if (id is UserIdentity) {
+                        provider = id.provider;
                       } else {
-                        // Some Supabase SDKs return UserIdentity objects; attempt property access
-                        provider = (id as dynamic).provider as String?;
-                      }
-                    } catch (_) {
-                      try {
-                        provider = (id as dynamic)['provider'] as String?;
-                      } catch (_) {
+                        // Fallback for other possible shapes
                         provider = null;
                       }
+                    } catch (_) {
+                      provider = null;
                     }
                     if (provider != null) connected.add(provider);
                   }
@@ -97,16 +116,7 @@ class ProfilePage extends ConsumerWidget {
                         child: connected.contains('google')
                             ? ElevatedButton(
                                 onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                            title: const Text('Disconnect Google'),
-                                            content: const Text('Unlink Google from your account?'),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
-                                              TextButton(onPressed: () => Navigator.pop(_, true), child: const Text('Disconnect')),
-                                            ],
-                                          ));
+                                  final confirm = await _showDisconnectDialog(context, 'Google');
                                   if (confirm == true) {
                                     // Best-effort unlink via RPC; may require server-side support.
                                     try {
@@ -143,16 +153,7 @@ class ProfilePage extends ConsumerWidget {
                         child: connected.contains('github')
                             ? ElevatedButton(
                                 onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                            title: const Text('Disconnect GitHub'),
-                                            content: const Text('Unlink GitHub from your account?'),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
-                                              TextButton(onPressed: () => Navigator.pop(_, true), child: const Text('Disconnect')),
-                                            ],
-                                          ));
+                                  final confirm = await _showDisconnectDialog(context, 'GitHub');
                                   if (confirm == true) {
                                     try {
                                       await SupabaseConfig.client.rpc('unlink_oauth_provider', params: {

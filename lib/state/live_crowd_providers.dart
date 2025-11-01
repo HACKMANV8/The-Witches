@@ -24,12 +24,59 @@ final routeRefreshTickProvider = StreamProvider<int>((ref) {
   return Stream.periodic(const Duration(minutes: 5), (i) => i);
 });
 
+/// Predicted crowd level per station based on historical data and time of day
+final predictedCrowdProvider = FutureProvider.autoDispose<Map<String, CrowdLevel>>((ref) async {
+  // Use requestedAt to determine hour of day and day of week
+  final now = DateTime.now();
+  final weekday = now.weekday; // 1 = Monday, 7 = Sunday
+  final hour = now.hour;
+  
+  // Query Supabase predicted_crowds table filtered by weekday and hour
+  final hourRange = '${hour.toString().padLeft(2, '0')}:00-${(hour+1).toString().padLeft(2, '0')}:00';
+  
+  final response = await SupabaseConfig.client
+    .from('predicted_crowds')
+    .select()
+    .eq('weekday', weekday)
+    .eq('hour_range', hourRange);
+    
+  final data = response as List<dynamic>;
+  
+  // Map to crowd levels based on predicted values
+  final Map<String, CrowdLevel> levels = {};
+  for (final row in data) {
+    final stationId = row['station_id']?.toString();
+    if (stationId == null) continue;
+    
+    final crowdScore = (row['crowd_score'] ?? 0.0) as num;
+    final level = switch (crowdScore) {
+      < 0.33 => CrowdLevel.low,
+      < 0.66 => CrowdLevel.moderate,
+      _ => CrowdLevel.high
+    };
+    levels[stationId] = level;
+  }
+  
+  return levels;
+});
+
 /// Stream of aggregated crowd level per station (maps stationId -> CrowdLevel).
 final stationCrowdStreamProvider = StreamProvider<Map<String, CrowdLevel>>((ref) {
   // Watch refresh timer to force re-computation
   ref.watch(routeRefreshTickProvider);
+  
+  final predictedAsync = ref.watch(predictedCrowdProvider);
+  final predicted = predictedAsync.value ?? const <String, CrowdLevel>{};
+  
   return CrowdReportService.streamRecentReports().map((reports) {
     final Map<String, List<CrowdLevel>> stationToLevels = {};
+    
+    // First, incorporate predicted levels (lower weight)
+    for (final entry in predicted.entries) {
+      final level = entry.value;
+      stationToLevels.putIfAbsent(entry.key, () => <CrowdLevel>[])
+        .addAll([level, level]); // Add twice to give it some weight
+    }
     for (final report in reports) {
       stationToLevels.putIfAbsent(report.stationId, () => <CrowdLevel>[]).add(CrowdReportModel.toUiLevel(report.crowdLevelValue));
     }

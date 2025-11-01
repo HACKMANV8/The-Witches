@@ -5,18 +5,25 @@ import 'package:metropulse/pages/planner_page.dart';
 import 'package:metropulse/pages/alerts_page.dart';
 import 'package:metropulse/pages/profile_page.dart';
 
+/// Interface for controlling the HomeShell navigation.
+abstract class HomeShellController {
+  /// Sets the active tab index. No-op if index is out of bounds.
+  void setTab(int index);
+}
+
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
-  // Allow descendants (like dashboard actions) to switch tabs programmatically
-  static _HomeShellState? maybeOf(BuildContext context) =>
+  /// Allow descendants (like dashboard actions) to switch tabs programmatically
+  /// Returns the HomeShell state if found, or null if not in a HomeShell.
+  static HomeShellController? maybeOf(BuildContext context) =>
       context.findAncestorStateOfType<_HomeShellState>();
 
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> implements HomeShellController {
   int _index = 0;
 
   final _pages = const [
@@ -46,6 +53,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   // Public API for switching tabs
+  @override
   void setTab(int index) {
     if (index < 0 || index >= _pages.length) return;
     setState(() => _index = index);
