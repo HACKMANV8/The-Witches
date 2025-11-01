@@ -26,37 +26,57 @@ final routeRefreshTickProvider = StreamProvider<int>((ref) {
 
 /// Predicted crowd level per station based on historical data and time of day
 final predictedCrowdProvider = FutureProvider.autoDispose<Map<String, CrowdLevel>>((ref) async {
-  // Use requestedAt to determine hour of day and day of week
+  // Use current time to determine day and interval
   final now = DateTime.now();
-  final weekday = now.weekday; // 1 = Monday, 7 = Sunday
+  final weekdayName = _weekdayName(now.weekday);
   final hour = now.hour;
-  
-  // Query Supabase predicted_crowds table filtered by weekday and hour
-  final hourRange = '${hour.toString().padLeft(2, '0')}:00-${(hour+1).toString().padLeft(2, '0')}:00';
-  
-  final response = await SupabaseConfig.client
-    .from('predicted_crowds')
-    .select()
-    .eq('weekday', weekday)
-    .eq('hour_range', hourRange);
-    
-  final data = response as List<dynamic>;
-  
-  // Map to crowd levels based on predicted values
+
+  // Fetch predictions from the 'predicted_crowd' table (singular) as defined in DB schema
+  List<Map<String, dynamic>> rows = [];
+  try {
+    final raw = await SupabaseConfig.client.from('predicted_crowd').select().eq('day_of_week', weekdayName);
+  final rawList = (raw as List?) ?? <dynamic>[];
+  rows = rawList.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+  } catch (e) {
+    // If RPC/table name mismatches or network issues occur, return empty map (predicted data optional)
+    return <String, CrowdLevel>{};
+  }
+
+  // Helper to check if a time_interval like '04:00-05:00' contains the current hour
+  bool _intervalMatches(String interval, int hour) {
+    final parts = interval.split('-');
+    if (parts.length != 2) return false;
+    try {
+      final start = int.parse(parts[0].split(':').first);
+      final end = int.parse(parts[1].split(':').first);
+      return hour >= start && hour < end;
+    } catch (_) {
+      return false;
+    }
+  }
+
   final Map<String, CrowdLevel> levels = {};
-  for (final row in data) {
-    final stationId = row['station_id']?.toString();
-    if (stationId == null) continue;
-    
-    final crowdScore = (row['crowd_score'] ?? 0.0) as num;
-    final level = switch (crowdScore) {
-      < 0.33 => CrowdLevel.low,
-      < 0.66 => CrowdLevel.moderate,
-      _ => CrowdLevel.high
-    };
+  for (final row in rows) {
+    final stationRef = row['station_id'] ?? row['station'] ?? row['station_code'];
+    if (stationRef == null) continue;
+    final stationId = stationRef.toString();
+
+    final interval = (row['time_interval'] ?? row['time_range'] ?? row['interval'] ?? '').toString();
+    if (interval.isEmpty) continue;
+    if (!_intervalMatches(interval, hour)) continue;
+
+    final predicted = (row['predicted_level'] ?? row['predicted'] ?? row['level']) as num?;
+    if (predicted == null) continue;
+
+    // Map numeric prediction (assumed 1-5 or 0-1 normalized) to low/moderate/high
+    double val = predicted.toDouble();
+    // If values are in 1..5 range, normalize to 0..1
+    if (val > 1.0) val = ((val - 1.0) / 4.0).clamp(0.0, 1.0);
+
+    final level = val <= 0.33 ? CrowdLevel.low : val <= 0.66 ? CrowdLevel.moderate : CrowdLevel.high;
     levels[stationId] = level;
   }
-  
+
   return levels;
 });
 

@@ -58,8 +58,12 @@ class HomeDashboardPage extends ConsumerWidget {
                   prefixIcon: Icon(Icons.search),
                 ),
                 onTap: () {
-                  // Navigate to planner tab
-                  // This will be handled by tapping the Plan tab manually for now
+                  // Navigate to planner tab when user taps the search field
+                  HomeShell.maybeOf(context)?.setTab(2);
+                },
+                onSubmitted: (value) {
+                  // If user submits a query, open Planner tab so they can choose destination
+                  HomeShell.maybeOf(context)?.setTab(2);
                 },
               ),
             ),
@@ -139,7 +143,10 @@ class HomeDashboardPage extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    // Open the Plan tab from the dashboard
+                    HomeShell.maybeOf(context)?.setTab(2);
+                  },
                   child: const Text('Plan Trip'),
                 ),
               ),
