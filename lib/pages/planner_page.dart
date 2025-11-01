@@ -10,6 +10,7 @@ import 'package:metropulse/widgets/report_crowd_button.dart';
 import 'package:metropulse/pages/route_results_page.dart';
 import 'package:metropulse/widgets/predicted_stations_list.dart';
 import 'package:metropulse/widgets/crowd_legend.dart';
+import 'package:metropulse/state/search_providers.dart';
 
 class PlannerPage extends ConsumerStatefulWidget {
   const PlannerPage({super.key});
@@ -23,6 +24,20 @@ class _PlannerPageState extends ConsumerState<PlannerPage> {
   String? toStationId;
   bool loading = false;
   List<RouteModelWrapper> results = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for home search matches and pre-fill the 'To' field if not already set.
+    ref.listen<AsyncValue<String?>>(homeSearchMatchProvider, (previous, next) {
+      next.whenData((matchedId) {
+        if (matchedId != null && toStationId == null) {
+          if (!mounted) return;
+          setState(() => toStationId = matchedId);
+        }
+      });
+    });
+  }
 
   Future<void> _findRoutes() async {
     if (fromStationId == null || toStationId == null) return;

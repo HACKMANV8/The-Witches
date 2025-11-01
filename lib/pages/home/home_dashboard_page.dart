@@ -6,6 +6,7 @@ import 'package:metropulse/widgets/crowd_badge.dart';
 import 'package:metropulse/pages/shell/home_shell.dart';
 import 'package:metropulse/widgets/report_crowd_button.dart';
 import 'package:metropulse/state/live_crowd_providers.dart';
+import 'package:metropulse/state/search_providers.dart';
 import 'package:metropulse/widgets/crowd_badge.dart' as badge;
 
 class HomeDashboardPage extends ConsumerWidget {
@@ -62,7 +63,8 @@ class HomeDashboardPage extends ConsumerWidget {
                   HomeShell.maybeOf(context)?.setTab(2);
                 },
                 onSubmitted: (value) {
-                  // If user submits a query, open Planner tab so they can choose destination
+                  // If user submits a query, record it and open Planner tab so they can choose destination
+                  ref.read(homeSearchQueryProvider.notifier).state = value;
                   HomeShell.maybeOf(context)?.setTab(2);
                 },
               ),
