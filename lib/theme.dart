@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// MetroPulse color system
 class MPColors {
@@ -33,7 +34,12 @@ class FontSizes {
 }
 
 ThemeData get lightTheme {
-  final base = ThemeData(useMaterial3: true, brightness: Brightness.light);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    textTheme: GoogleFonts.notoSansTextTheme(),
+  );
+  
   final scheme = ColorScheme.fromSeed(
     seedColor: MPColors.purple,
     brightness: Brightness.light,
@@ -55,28 +61,28 @@ ThemeData get lightTheme {
       elevation: 0,
       margin: EdgeInsets.zero,
     ),
-    textTheme: base.textTheme.copyWith(
-      headlineMedium: const TextStyle(
+    textTheme: GoogleFonts.notoSansTextTheme(base.textTheme).copyWith(
+      headlineMedium: GoogleFonts.notoSans(
         fontSize: FontSizes.h1,
         fontWeight: FontWeight.w700,
         color: MPColors.textDark,
       ),
-      headlineSmall: const TextStyle(
+      headlineSmall: GoogleFonts.notoSans(
         fontSize: FontSizes.h2,
         fontWeight: FontWeight.w700,
         color: MPColors.textDark,
       ),
-      bodyLarge: const TextStyle(
+      bodyLarge: GoogleFonts.notoSans(
         fontSize: FontSizes.body,
         fontWeight: FontWeight.w400,
         color: MPColors.textDark,
       ),
-      bodyMedium: const TextStyle(
+      bodyMedium: GoogleFonts.notoSans(
         fontSize: FontSizes.label,
         fontWeight: FontWeight.w400,
         color: MPColors.textSecondary,
       ),
-      labelLarge: TextStyle(
+      labelLarge: GoogleFonts.notoSans(
         fontSize: FontSizes.label,
         fontWeight: FontWeight.w600,
         color: scheme.onPrimary,
@@ -84,25 +90,37 @@ ThemeData get lightTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
-        foregroundColor: WidgetStateProperty.all(Colors.white),
-        backgroundColor: WidgetStateProperty.all(MPColors.purple),
-        shape: WidgetStateProperty.all(
+        foregroundColor: MaterialStateProperty.all(Colors.white),
+        backgroundColor: MaterialStateProperty.all(MPColors.purple),
+        shape: MaterialStateProperty.all(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        padding: WidgetStateProperty.all(
+        padding: MaterialStateProperty.all(
           const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.notoSans(
+            fontSize: FontSizes.label,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     ),
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+    inputDecorationTheme: InputDecorationTheme(
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      hintStyle: GoogleFonts.notoSans(
+        color: MPColors.textSecondary,
+        fontSize: FontSizes.body,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedItemColor: MPColors.purple,
-      unselectedItemColor: MPColors.textSecondary.withValues(alpha: 0.7),
+      unselectedItemColor: MPColors.textSecondary.withOpacity(0.7),
       type: BottomNavigationBarType.fixed,
       backgroundColor: MPColors.surface,
     ),
@@ -110,7 +128,12 @@ ThemeData get lightTheme {
 }
 
 ThemeData get darkTheme {
-  final base = ThemeData(useMaterial3: true, brightness: Brightness.dark);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    textTheme: GoogleFonts.notoSansTextTheme(ThemeData.dark().textTheme),
+  );
+
   final scheme = ColorScheme.fromSeed(
     seedColor: MPColors.purple,
     brightness: Brightness.dark,
@@ -120,6 +143,7 @@ ThemeData get darkTheme {
 
   return base.copyWith(
     colorScheme: scheme,
+    textTheme: GoogleFonts.notoSansTextTheme(base.textTheme),
     appBarTheme: AppBarTheme(
       backgroundColor: base.colorScheme.surface,
       foregroundColor: base.colorScheme.onSurface,
@@ -132,7 +156,7 @@ ThemeData get darkTheme {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedItemColor: MPColors.purple,
-      unselectedItemColor: base.colorScheme.onSurface.withValues(alpha: 0.7),
+      unselectedItemColor: base.colorScheme.onSurface.withOpacity(0.7),
       type: BottomNavigationBarType.fixed,
       backgroundColor: base.colorScheme.surface,
     ),

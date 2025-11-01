@@ -29,16 +29,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  fonts:
-    - family: NotoSans
-      fonts:
-        - asset: assets/fonts/NotoSans-Regular.ttf
-        - asset: assets/fonts/NotoSans-Bold.ttf
-          weight: 700
-    - family: NotoEmoji
-      fonts:
-        - asset: assets/fonts/NotoEmoji-Regular.ttf
 
 flutter_launcher_icons:
   android: true
